@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tyto"
+version = "0.11.0"
+description = "Official Python SDK for the Tyto API"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Bonya" }]
+requires-python = ">=3.9"
+dependencies = [
+  "httpx>=0.27.0",
+  "websockets>=13.0",
+]
+
+[project.urls]
+Homepage = "https://tyto.run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tyto"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/tyto", "README.md", "pyproject.toml"]
