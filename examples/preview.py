@@ -6,7 +6,7 @@ from tyto import Tyto
 
 tyto = Tyto(api_key=os.environ.get("TYTO_API_KEY"))
 
-nest = tyto.nests.create(name="preview-demo", template="ubuntu-24-dev")
+nest = tyto.create(name="preview-demo")
 print(f"Nest {nest.id} is {nest.status}")
 
 # Upload the HTML page to the nest
@@ -15,7 +15,7 @@ nest.fs.write("index.html", html.read_bytes(), kind="file")
 print("Uploaded index.html")
 
 # Start a Python HTTP server on port 3000 serving /home/tyto
-nest.sessions.create(
+nest.create_session(
     argv=["python3", "-m", "http.server", "3000"],
     tty=True,
     cwd="/home/tyto",

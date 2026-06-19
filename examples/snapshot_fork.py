@@ -4,12 +4,12 @@ from tyto import Tyto
 
 tyto = Tyto(api_key=os.environ.get("TYTO_API_KEY"))
 
-nest = tyto.nests.create(name="snapshot-demo", template="ubuntu-24-dev")
+nest = tyto.create(name="snapshot-demo", template="ubuntu-24-dev")
 print(f"Nest {nest.id} is {nest.status}")
 
 # Create a snapshot
 print("Creating snapshot…")
-snap = nest.snapshots.create(name="my-snapshot", description="Before refactoring")
+snap = nest.create_snapshot(name="my-snapshot", description="Before refactoring")
 print(f"Snapshot {snap.id} state: {snap.state}")
 
 # List snapshots
@@ -28,11 +28,11 @@ print(f"Forked → {fork.id} ({fork.status})")
 
 # Delete the snapshot (dry run first)
 if snap.id:
-    dry = tyto.snapshots.delete(snap.id, dry_run=True)
+    dry = nest.delete_snapshot(snap.id, dry_run=True)
     print(f"Would free {dry.would_free_bytes or 0} bytes, can_delete={dry.can_delete}")
 
     if dry.can_delete:
-        result = tyto.snapshots.delete(snap.id)
+        result = nest.delete_snapshot(snap.id)
         print(f"Deleted: {result.deleted}")
 
 nest.stop()

@@ -9,17 +9,21 @@ from typing import List, Optional, Union
 from .._http import HttpClient
 from ..config import TytoConfig
 from ..models import (
+    DeleteSnapshotResponse,
     ForkResponse,
     NestData,
     NestLifecycle,
+    PreviewData,
     RestoreResponse,
+    SessionData,
+    SnapshotData,
     WakeResponse,
 )
 from ..ws import connect_ws
 from .files import FileSystem
 from .holds import HoldsResource
 from .previews import PreviewsResource
-from .sessions import SessionsResource
+from .sessions import Session, SessionsResource
 from .snapshots import SnapshotsResource
 
 
@@ -146,6 +150,39 @@ class Nest:
                 pass
         return "".join(chunks)
 
+    def create_snapshot(
+        self,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        stop_if_running: bool = False,
+    ) -> SnapshotData:
+        return self.snapshots.create(name=name, description=description, stop_if_running=stop_if_running)
+
+    def delete_snapshot(self, snapshot_id: str, dry_run: bool = False) -> DeleteSnapshotResponse:
+        params: dict = {"dry_run": dry_run} if dry_run else {}
+        result = self._http.delete(f"/snapshots/{snapshot_id}", params=params)
+        return DeleteSnapshotResponse.from_dict(result)
+
+    def create_session(
+        self,
+        argv: list,
+        tty: bool = False,
+        cwd: Optional[str] = None,
+        cols: Optional[int] = None,
+        rows: Optional[int] = None,
+        env: Optional[dict] = None,
+    ) -> Session:
+        return self.sessions.create(argv=argv, tty=tty, cwd=cwd, cols=cols, rows=rows, env=env)
+
+    def create_preview(
+        self,
+        port: int,
+        auth: str = "private",
+        public: bool = False,
+        name: Optional[str] = None,
+    ) -> PreviewData:
+        return self.previews.create(port=port, auth=auth, public=public, name=name)
+
     def put(self, local_path: str, remote_path: str) -> None:
         local = Path(local_path)
         if local.is_dir():
@@ -204,8 +241,3 @@ class NestsResource:
         result = self._http.get(f"/nest/{nest_id}")
         return Nest(NestData.from_dict(result), self._http, self._config)
 
-    def get_by_name(self, name: str) -> Nest:
-        for nest in self.list():
-            if nest.name == name:
-                return nest
-        raise ValueError(f"No nest found with name {name!r}")

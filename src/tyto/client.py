@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Optional
 
 from ._http import HttpClient
 from .config import TytoConfig, resolve_config
@@ -9,13 +9,6 @@ from .resources.auth import AuthResource
 from .resources.nests import Nest, NestsResource
 from .resources.previews import TopLevelPreviewsResource
 from .resources.snapshots import TopLevelSnapshotsResource
-
-
-def _parse_remote(remote: str) -> Tuple[str, str]:
-    if ":" not in remote:
-        raise ValueError(f"Invalid remote path {remote!r}: expected 'nestName:path'")
-    nest_name, _, remote_path = remote.partition(":")
-    return nest_name, remote_path
 
 
 class Tyto:
@@ -38,16 +31,6 @@ class Tyto:
         repo_url: Optional[str] = None,
     ) -> Nest:
         return self.nests.create(name=name, template=template, repo_url=repo_url)
-
-    def put(self, local_path: str, remote: str) -> None:
-        nest_name, remote_path = _parse_remote(remote)
-        nest = self.nests.get_by_name(nest_name)
-        nest.put(local_path, remote_path)
-
-    def get(self, remote: str, local_path: str) -> None:
-        nest_name, remote_path = _parse_remote(remote)
-        nest = self.nests.get_by_name(nest_name)
-        nest.get(remote_path, local_path)
 
     def health(self) -> dict:
         return self._http.get("/healthz")

@@ -36,19 +36,14 @@ me = tyto.me()
 print(me.email)
 
 # Create a nest
-nest = tyto.nests.create(name="my-nest", template="ubuntu-24-dev")
+nest = tyto.create(name="my-nest", template="ubuntu-24-dev")
 
-# Upload a file
-nest.fs.write("/home/tyto/hello.txt", b"Hello!", kind="file")
+# Upload / download a file or directory
+nest.put("./hello.txt", "hello.txt")
+nest.get("hello.txt", "./hello.downloaded.txt")
 
-# Read it back
-result = nest.fs.read("/home/tyto/hello.txt")
-print(result.data.decode())  # "Hello!"
-
-# Run a command via a managed session
-session = nest.sessions.create(argv=["bash", "-lc", "echo hi"], tty=False)
-
-# Attach to the session over WebSocket
+# Create a session and attach over WebSocket
+session = nest.create_session(argv=["bash", "-lc", "echo hi"], tty=False)
 with session.attach() as ws:
     for message in ws:
         print(message)
@@ -58,12 +53,13 @@ with nest.exec() as ws: ...
 with nest.console() as ws: ...
 
 # Create a preview
-preview = nest.previews.create(port=3000, auth="private")
+preview = nest.create_preview(port=3000, auth="private")
 print(preview.url)
 
 # Snapshot, fork, restore
-snap = nest.snapshots.create(name="v1")
+snap = nest.create_snapshot(name="v1")
 fork = nest.fork(name="my-fork")
+nest.delete_snapshot(snap.id)
 # nest.restore(snap.id)
 
 # Keepalive hold
@@ -82,11 +78,17 @@ nest.delete()
 
 | Resource | Description |
 |---|---|
+| `tyto.create()` | Create a nest |
 | `tyto.nests` | Create / list / get nests |
 | `tyto.previews` | Inspect / revoke previews by ID |
-| `tyto.snapshots` | Delete snapshots by ID |
 | `tyto.auth` | CLI browser auth flow |
-| `nest.fs` | Upload / download files |
+| `nest.put(local, remote)` | Upload a file or directory |
+| `nest.get(remote, local)` | Download a file or directory |
+| `nest.create_session()` | Create a managed session |
+| `nest.create_preview()` | Create a preview URL |
+| `nest.create_snapshot()` | Create a snapshot |
+| `nest.delete_snapshot()` | Delete a snapshot |
+| `nest.fs` | Low-level file upload / download |
 | `nest.sessions` | Managed sessions (create / list) |
 | `nest.previews` | Previews scoped to the nest |
 | `nest.snapshots` | Snapshots + fork/restore |
