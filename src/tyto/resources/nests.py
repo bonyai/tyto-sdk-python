@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import io
 import os
+import shlex
 import tarfile
+import time
+import uuid
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -136,19 +139,58 @@ class Nest:
         )
         return ForkResponse.from_dict(result)
 
-    def run(self, argv: list, cwd: Optional[str] = None, cols: int = 80, rows: int = 24) -> str:
-        session = self.sessions.create(argv=argv, tty=True, cwd=cwd, cols=cols, rows=rows)
-        chunks: list = []
-        with session.attach() as ws:
+    def run(
+        self,
+        argv: list,
+        cwd: Optional[str] = None,
+        cols: int = 80,
+        rows: int = 24,
+        timeout_s: float = 120.0,
+    ) -> str:
+        """Run a command in the nest and return its captured output.
+
+        The API runs managed sessions to completion server-side and only exposes
+        live output over a WebSocket, which is racy for short commands (the
+        session can finish before the stream attaches, yielding HTTP 410). So we
+        redirect the command's stdout+stderr and exit code to files, poll the
+        filesystem until the exit-code file appears, then read the output back
+        over the (reliable) filesystem API. No WebSocket required.
+        """
+        work_dir = "/home/tyto/.tyto-run"
+        run_id = uuid.uuid4().hex
+        out_abs = f"{work_dir}/{run_id}.out"
+        rc_abs = f"{work_dir}/{run_id}.rc"
+        out_rel = f".tyto-run/{run_id}.out"
+        rc_rel = f".tyto-run/{run_id}.rc"
+
+        effective_cwd = cwd or "/home/tyto"
+        inner = " ".join(shlex.quote(a) for a in argv)
+        script = (
+            f"mkdir -p {shlex.quote(work_dir)}; "
+            f"{{ cd {shlex.quote(effective_cwd)} && {inner} ; }} > {shlex.quote(out_abs)} 2>&1; "
+            f"echo $? > {shlex.quote(rc_abs)}"
+        )
+
+        self.sessions.create(
+            argv=["bash", "-lc", script], tty=True, cwd=cwd, cols=cols, rows=rows
+        )
+
+        # The exit-code file is written only after the command completes, so its
+        # presence is an unambiguous "done" signal. (Session status is unreliable
+        # here: a quiet tty session reports "idle" while still running.)
+        deadline = time.perf_counter() + timeout_s
+        while time.perf_counter() < deadline:
+            time.sleep(0.5)
             try:
-                for message in ws:
-                    if isinstance(message, bytes):
-                        chunks.append(message.decode(errors="replace"))
-                    else:
-                        chunks.append(str(message))
+                if self.fs.read(rc_rel).data.decode().strip():
+                    break
             except Exception:
-                pass
-        return "".join(chunks)
+                continue  # exit-code file not written yet
+
+        try:
+            return self.fs.read(out_rel).data.decode(errors="replace")
+        except Exception:
+            return ""
 
     def create_snapshot(
         self,
