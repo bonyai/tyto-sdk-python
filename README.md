@@ -5,7 +5,7 @@ Python SDK for the [Tyto API](https://api.tyto.run) — manage nests, sessions, 
 ## Install
 
 ```bash
-pip install tyto
+pip install tyto.run
 ```
 
 ## Auth
