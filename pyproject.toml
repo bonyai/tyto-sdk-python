@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tyto.run"
-version = "0.11.0"
+version = "0.12.0"
 description = "Official Python SDK for the Tyto API"
 readme = "README.md"
 license = { text = "MIT" }

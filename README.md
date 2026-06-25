@@ -1,6 +1,6 @@
 # tyto
 
-Python SDK for the [Tyto API](https://api.tyto.run) — manage nests, sessions, files, previews, snapshots, and keepalive holds.
+Python SDK for the [Tyto API](https://tyto.run) — manage nests, sessions, files, previews, snapshots, and keepalive holds.
 
 ## Install
 
