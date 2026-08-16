@@ -1,25 +1,52 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "tyto.run"
-version = "0.12.0"
-description = "Official Python SDK for the Tyto API"
+version = "1.0.0"
+description = "Synchronous Python SDK for the Tyto API"
 readme = "README.md"
-license = { text = "MIT" }
-authors = [{ name = "Bonya" }]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
-  "httpx>=0.27.0",
-  "websockets>=13.0",
+  "grpcio>=1.83,<2",
+  "protobuf>=7.35.1,<8",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
 ]
 
-[project.urls]
-Homepage = "https://tyto.run"
+[project.optional-dependencies]
+dev = [
+  "build>=1.0",
+  "mypy>=1.8",
+  "pytest>=8",
+]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/tyto"]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["tyto*"]
 
-[tool.hatch.build.targets.sdist]
-include = ["src/tyto", "README.md", "pyproject.toml"]
+[tool.setuptools.package-data]
+tyto = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["tyto"]
+exclude = ["tyto/_proto/"]
+
+[[tool.mypy.overrides]]
+module = ["grpc"]
+ignore_missing_imports = true

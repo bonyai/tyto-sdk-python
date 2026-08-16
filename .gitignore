@@ -1,7 +1,9 @@
-.venv/
 __pycache__/
 *.pyc
-*.egg-info/
-dist/
+.venv/
+.proto-export/
 build/
-.env
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
