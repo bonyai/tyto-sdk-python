@@ -217,9 +217,9 @@ def test_create_list_kill_return_typed_session_info(monkeypatch: pytest.MonkeyPa
         sandbox_suspended=False,
     )
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    created = sandbox.sessions.create("server", ["bash"], cols=120, rows=40)
+    created = sandbox.create_session("server", ["bash"], cols=120, rows=40)
     assert isinstance(created, SessionInfo)
     assert created.name == "server"
     assert created.command == ("bash",)
@@ -227,12 +227,12 @@ def test_create_list_kill_return_typed_session_info(monkeypatch: pytest.MonkeyPa
     assert guest.create_requests[0].cols == 120
     assert guest.create_requests[0].rows == 40
 
-    listed = sandbox.sessions.list()
+    listed = sandbox.list_sessions()
     assert listed.sandbox_suspended is False
     assert [s.name for s in listed] == ["server"]
     assert len(listed) == 1
 
-    killed = sandbox.sessions.kill("server", signal="KILL", grace_ms=1000)
+    killed = sandbox.kill_session("server", signal="KILL", grace_ms=1000)
     assert killed.status is SessionStatus.KILLED
     assert killed.exit == Exit(exit_code=0, signaled=True, signal=15)
     assert killed.ended_at is not None
@@ -247,9 +247,9 @@ def test_list_reports_sandbox_suspended_without_local_blocking(monkeypatch: pyte
         sandbox_suspended=True,
     )
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    result = sandbox.sessions.list()
+    result = sandbox.list_sessions()
 
     assert result.sandbox_suspended is True
     assert [s.name for s in result] == ["server"]
@@ -258,9 +258,9 @@ def test_list_reports_sandbox_suspended_without_local_blocking(monkeypatch: pyte
 def test_non_terminal_session_info_has_no_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    info = sandbox.sessions.create("server", ["bash"])
+    info = sandbox.create_session("server", ["bash"])
 
     assert info.exit is None
     assert info.ended_at is None
@@ -277,9 +277,9 @@ def test_unspecified_session_status_does_not_raise(monkeypatch: pytest.MonkeyPat
         sandbox_suspended=True,
     )
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    result = sandbox.sessions.list()
+    result = sandbox.list_sessions()
 
     assert result.sessions[0].status is SessionStatus.UNSPECIFIED
 
@@ -291,40 +291,40 @@ def test_create_over_existing_raises_session_exists(monkeypatch: pytest.MonkeyPa
     guest = FakeSessionGuest()
     guest.create_errors.put(RpcFailure(grpc.StatusCode.ALREADY_EXISTS, "session \"server\" already exists"))
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(SessionExists):
-        sandbox.sessions.create("server", ["bash"])
+        sandbox.create_session("server", ["bash"])
 
 
 def test_kill_unknown_name_raises_session_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     guest.kill_errors.put(RpcFailure(grpc.StatusCode.NOT_FOUND, "session \"ghost\" not found"))
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(SessionNotFoundError):
-        sandbox.sessions.kill("ghost")
+        sandbox.kill_session("ghost")
 
 
 def test_attach_unknown_name_raises_session_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     guest.attach_errors.put(RpcFailure(grpc.StatusCode.NOT_FOUND, "session \"ghost\" not found"))
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(SessionNotFoundError):
-        sandbox.sessions.attach("ghost")
+        sandbox.attach_session("ghost")
 
 
 def test_session_permission_denied_is_capability_rejected_and_not_refreshed(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     guest.create_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "session capability rejected"))
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(CapabilityRejectedError):
-        sandbox.sessions.create("server", ["bash"])
+        sandbox.create_session("server", ["bash"])
 
     assert len(transport.tapi.reissue_requests) == 0
 
@@ -339,9 +339,9 @@ def test_attach_surfaces_replay_metadata_on_the_handle(monkeypatch: pytest.Monke
         guest_pb2.AttachSessionResponse(exit=guest_pb2.ExecExit(exit_code=0)),
     ]
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    session = sandbox.sessions.attach("server")
+    session = sandbox.attach_session("server")
 
     assert isinstance(session, SessionStream)
     assert session.replayed_bytes == 4096
@@ -357,9 +357,9 @@ def test_attach_surfaces_replay_metadata_on_the_handle(monkeypatch: pytest.Monke
 def test_attach_iterates_output_then_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    with sandbox.sessions.attach("server") as session:
+    with sandbox.attach_session("server") as session:
         events = list(session)
 
     assert events == [Stdout(b"hello"), Exit(exit_code=0)]
@@ -374,9 +374,9 @@ def test_attach_output_dropped_does_not_end_the_stream(monkeypatch: pytest.Monke
         guest_pb2.AttachSessionResponse(exit=guest_pb2.ExecExit(exit_code=0)),
     ]
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    with sandbox.sessions.attach("server") as session:
+    with sandbox.attach_session("server") as session:
         events = list(session)
 
     assert events == [
@@ -393,9 +393,9 @@ def test_attach_ended_reports_reason_and_terminates(monkeypatch: pytest.MonkeyPa
         guest_pb2.AttachSessionResponse(ended=guest_pb2.AttachEnded(reason=guest_pb2.AttachEnded.REASON_TAKEOVER)),
     ]
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    with sandbox.sessions.attach("server") as session:
+    with sandbox.attach_session("server") as session:
         events = list(session)
 
     assert events == [SessionEnded(SessionEndedReason.TAKEOVER)]
@@ -405,9 +405,9 @@ def test_write_resize_and_detach_forward_expected_frames(monkeypatch: pytest.Mon
     guest = FakeSessionGuest()
     guest.attach_responses = [_accepted_response()]
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    session = sandbox.sessions.attach("server")
+    session = sandbox.attach_session("server")
     session.write(b"npm run dev\n")
     session.resize(cols=140, rows=45)
     session.detach()
@@ -433,16 +433,16 @@ def test_unary_methods_refresh_once_on_unauthenticated(monkeypatch: pytest.Monke
     else:
         guest.kill_errors.put(error)
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     if method == "create":
-        result = sandbox.sessions.create("server", ["bash"])
+        result = sandbox.create_session("server", ["bash"])
         assert result.name == "server"
     elif method == "list":
-        result = sandbox.sessions.list()
+        result = sandbox.list_sessions()
         assert list(result) == []
     else:
-        result = sandbox.sessions.kill("server")
+        result = sandbox.kill_session("server")
         assert result.name == "server"
 
     assert len(transport.tapi.reissue_requests) == 1
@@ -453,10 +453,10 @@ def test_unary_methods_never_refresh_on_permission_denied(monkeypatch: pytest.Mo
     guest = FakeSessionGuest()
     guest.list_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "session capability rejected"))
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(CapabilityRejectedError):
-        sandbox.sessions.list()
+        sandbox.list_sessions()
 
     assert len(transport.tapi.reissue_requests) == 0
 
@@ -466,10 +466,10 @@ def test_unary_refresh_retries_only_once_then_propagates(monkeypatch: pytest.Mon
     guest.list_errors.put(RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "session capability expired"))
     guest.list_errors.put(RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "session capability expired (again)"))
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(AuthenticationError):
-        sandbox.sessions.list()
+        sandbox.list_sessions()
 
     assert len(transport.tapi.reissue_requests) == 1
     assert len(guest.list_requests) == 2
@@ -481,9 +481,9 @@ def test_attach_refreshes_on_unauthenticated_at_admission_and_uses_fresh_token(
     guest = FakeSessionGuest()
     guest.attach_errors.put(RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "session capability expired"))
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    session = sandbox.sessions.attach("server")
+    session = sandbox.attach_session("server")
 
     assert session.info.name == "server"
     assert len(transport.tapi.reissue_requests) == 1
@@ -498,9 +498,9 @@ def test_attach_never_refreshes_mid_stream(monkeypatch: pytest.MonkeyPatch) -> N
         RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "session capability expired"),
     )
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    session = sandbox.sessions.attach("server")
+    session = sandbox.attach_session("server")
     with pytest.raises(AuthenticationError):
         next(session)
 
@@ -512,10 +512,10 @@ def test_attach_refresh_retries_only_once_then_propagates(monkeypatch: pytest.Mo
     guest.attach_errors.put(RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "session capability expired"))
     guest.attach_errors.put(RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "session capability expired (again)"))
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(AuthenticationError):
-        sandbox.sessions.attach("server")
+        sandbox.attach_session("server")
 
     assert len(transport.tapi.reissue_requests) == 1
 
@@ -526,26 +526,26 @@ def test_attach_refresh_retries_only_once_then_propagates(monkeypatch: pytest.Mo
 def test_create_validates_name_command_and_dimensions(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(InvalidRequestError):
-        sandbox.sessions.create("Server", ["bash"])
+        sandbox.create_session("Server", ["bash"])
     with pytest.raises(InvalidRequestError):
-        sandbox.sessions.create("", ["bash"])
+        sandbox.create_session("", ["bash"])
     with pytest.raises(InvalidRequestError):
-        sandbox.sessions.create("server", [])
+        sandbox.create_session("server", [])
     with pytest.raises(InvalidRequestError):
-        sandbox.sessions.create("server", ["bash"], cols=513)
+        sandbox.create_session("server", ["bash"], cols=513)
     with pytest.raises(InvalidRequestError):
-        sandbox.sessions.create("server", ["bash"], cols=-1)
+        sandbox.create_session("server", ["bash"], cols=-1)
 
 
 def test_resize_rejects_zero_like_exec(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     guest.attach_responses = [_accepted_response()]
     client, _ = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
-    session = sandbox.sessions.attach("server")
+    sandbox = client.create_sandbox(template="bonya-dev")
+    session = sandbox.attach_session("server")
 
     with pytest.raises(InvalidRequestError):
         session.resize(cols=0, rows=24)
@@ -563,7 +563,7 @@ def test_exec_and_exec_stream_are_unaffected_by_sessions_module(monkeypatch: pyt
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     result = sandbox.exec(["printf", "ready"])
     assert result.stdout == "ready"

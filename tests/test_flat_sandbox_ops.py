@@ -18,7 +18,7 @@ def _client(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
 
 def test_create_snapshot_resolves_the_handle_then_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
     client, transport = _client(monkeypatch)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     snapshot = client.create_snapshot(sandbox.id, idempotency_key="snap-key")
 
@@ -30,7 +30,7 @@ def test_create_snapshot_resolves_the_handle_then_delegates(monkeypatch: pytest.
 
 def test_delete_snapshot_resolves_the_handle_then_deletes(monkeypatch: pytest.MonkeyPatch) -> None:
     client, transport = _client(monkeypatch)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     snapshot = client.create_snapshot(sandbox.id)
 
     client.delete_snapshot(sandbox.id, snapshot.id)
@@ -49,7 +49,7 @@ def test_create_snapshot_propagates_get_sandbox_failure(monkeypatch: pytest.Monk
 
 def test_create_list_delete_preview_resolve_the_handle_then_delegate(monkeypatch: pytest.MonkeyPatch) -> None:
     client, transport = _client(monkeypatch)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     preview = client.create_preview(sandbox.id, 3000, name="web")
     assert isinstance(preview, Preview)
@@ -67,7 +67,7 @@ def test_create_list_delete_preview_resolve_the_handle_then_delegate(monkeypatch
 def test_create_list_kill_session_resolve_the_handle_then_delegate(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeSessionGuest()
     client, transport = make_sessions_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     created = client.create_session(sandbox.id, "server", ["bash"], cols=120, rows=40)
     assert isinstance(created, SessionInfo)

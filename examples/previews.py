@@ -14,7 +14,7 @@ from tyto import Tyto, PreviewAuth
 def main() -> None:
     api_key = os.environ["BONYA_API_KEY"]
     with Tyto(api_key) as client:
-        with client.create_sandbox(template="ubuntu-24.04") as sandbox:
+        with client.create_sandbox(template="bonya-dev") as sandbox:
             client.create_session(
                 sandbox.id,
                 "web",
@@ -28,14 +28,16 @@ def main() -> None:
             print(f"preview: {preview.url}")
 
             # A token-mode URL needs the sandbox's capability, and a URL is not
-            # a safe place to leave one. browser_url mints a single-use entry
-            # point: the gateway validates the token, swaps it for an HttpOnly
-            # cookie, and redirects to the same address without it.
+            # a safe place to leave one. preview_browser_url mints a
+            # single-use entry point: the gateway validates the token, swaps
+            # it for an HttpOnly cookie, and redirects to the same address
+            # without it.
             #
             # Open it once and let the cookie carry the session. Do not share
-            # it -- whoever holds it holds the sandbox's capability. There is
-            # no flat form for this: it is a local computation, not an RPC.
-            print(f"open once: {sandbox.previews.browser_url(preview)}")
+            # it -- whoever holds it holds the sandbox's capability. This is
+            # a local computation, not an RPC, so there is no client-level
+            # form of it.
+            print(f"open once: {sandbox.preview_browser_url(preview)}")
 
             for existing in client.list_previews(sandbox.id):
                 print(f"{existing.id} :{existing.port} {existing.auth.value}")

@@ -94,6 +94,126 @@ class TApiServiceStub:
                 request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationsRequest.SerializeToString,
                 response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationsResponse.FromString,
                 _registered_method=True)
+        self.GetOrganizationBilling = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetOrganizationBilling',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingResponse.FromString,
+                _registered_method=True)
+        self.ListOrganizationTopUpOffers = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListOrganizationTopUpOffers',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationTopUpOffersRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationTopUpOffersResponse.FromString,
+                _registered_method=True)
+        self.StartOrganizationTopUpPurchase = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/StartOrganizationTopUpPurchase',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartOrganizationTopUpPurchaseRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartOrganizationTopUpPurchaseResponse.FromString,
+                _registered_method=True)
+        self.ApplyOrganizationCoupon = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ApplyOrganizationCoupon',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiApplyOrganizationCouponRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiApplyOrganizationCouponResponse.FromString,
+                _registered_method=True)
+        self.ListOrganizationCoupons = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListOrganizationCoupons',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationCouponsRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationCouponsResponse.FromString,
+                _registered_method=True)
+        self.ListOrganizationInvoices = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListOrganizationInvoices',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationInvoicesRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationInvoicesResponse.FromString,
+                _registered_method=True)
+        self.GetOrganizationInvoice = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetOrganizationInvoice',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationInvoiceRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationInvoiceResponse.FromString,
+                _registered_method=True)
+        self.GetOrganizationBillingOverview = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetOrganizationBillingOverview',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingOverviewRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingOverviewResponse.FromString,
+                _registered_method=True)
+        self.GetOrganizationUsageBreakdown = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetOrganizationUsageBreakdown',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageBreakdownRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageBreakdownResponse.FromString,
+                _registered_method=True)
+        self.GetOrganizationUsageSeries = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetOrganizationUsageSeries',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageSeriesRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageSeriesResponse.FromString,
+                _registered_method=True)
+        self.ListOrganizationPayments = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListOrganizationPayments',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationPaymentsRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationPaymentsResponse.FromString,
+                _registered_method=True)
+        self.RunJob = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/RunJob',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiRunJobRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiRunJobResponse.FromString,
+                _registered_method=True)
+        self.StartJob = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/StartJob',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartJobRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartJobResponse.FromString,
+                _registered_method=True)
+        self.GetJobRun = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetJobRun',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobRunRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobRunResponse.FromString,
+                _registered_method=True)
+        self.ListJobRuns = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListJobRuns',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobRunsRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobRunsResponse.FromString,
+                _registered_method=True)
+        self.CancelJobRun = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/CancelJobRun',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCancelJobRunRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCancelJobRunResponse.FromString,
+                _registered_method=True)
+        self.CreateJobSchedule = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/CreateJobSchedule',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCreateJobScheduleRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCreateJobScheduleResponse.FromString,
+                _registered_method=True)
+        self.GetJobSchedule = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/GetJobSchedule',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobScheduleRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobScheduleResponse.FromString,
+                _registered_method=True)
+        self.ListJobSchedules = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListJobSchedules',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobSchedulesRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobSchedulesResponse.FromString,
+                _registered_method=True)
+        self.UpdateJobSchedule = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/UpdateJobSchedule',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiUpdateJobScheduleRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiUpdateJobScheduleResponse.FromString,
+                _registered_method=True)
+        self.SetJobSchedulePaused = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/SetJobSchedulePaused',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiSetJobSchedulePausedRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiSetJobSchedulePausedResponse.FromString,
+                _registered_method=True)
+        self.TriggerJobSchedule = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/TriggerJobSchedule',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiTriggerJobScheduleRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiTriggerJobScheduleResponse.FromString,
+                _registered_method=True)
+        self.DeleteJobSchedule = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/DeleteJobSchedule',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiDeleteJobScheduleRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiDeleteJobScheduleResponse.FromString,
+                _registered_method=True)
+        self.ListTemplates = channel.unary_unary(
+                '/tyto.runtime.v1.TApiService/ListTemplates',
+                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListTemplatesRequest.SerializeToString,
+                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListTemplatesResponse.FromString,
+                _registered_method=True)
 
 
 class TApiServiceServicer:
@@ -182,6 +302,185 @@ class TApiServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetOrganizationBilling(self, request, context):
+        """Billing reads and top-up. Owner-only, unlike every other method here: a
+        member can spend an organization's credit but cannot see its balance or
+        add to it.
+
+        These are the only public methods that reach the billing module, and they
+        reach it the same way everything else does -- TApi authenticates and
+        authorizes, then calls it over a private transport that is not routed from
+        outside. Nothing in the billing schema is published.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListOrganizationTopUpOffers(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StartOrganizationTopUpPurchase(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ApplyOrganizationCoupon(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListOrganizationCoupons(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListOrganizationInvoices(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetOrganizationInvoice(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetOrganizationBillingOverview(self, request, context):
+        """GetOrganizationBillingOverview, ListOrganizationUsageBreakdown,
+        ListOrganizationUsageSeries, and ListOrganizationPayments are the
+        dashboard reads added in docs/billing-dashboard-api.md (Phase 8). All
+        four require the owner or billing role, exactly like the billing RPCs
+        above.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetOrganizationUsageBreakdown(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetOrganizationUsageSeries(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListOrganizationPayments(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RunJob(self, request, context):
+        """Workflows (durable jobs). A job runs one command or script on a sandbox --
+        a new one this run creates and deletes, or one the caller already has --
+        and survives a control-plane restart, because the run's state lives in
+        the workflows module's durable engine rather than in any process here.
+
+        These are the only public methods that reach the workflows module, and
+        they reach it the way everything internal is reached: TApi authenticates
+        and resolves the tenant, then calls it over a private transport that is
+        not routed from outside. Nothing in the workflows schema is published.
+
+        On a deployment with no workflows module configured every method here
+        returns UNIMPLEMENTED, and the rest of this service behaves exactly as it
+        did before they existed. Nothing on the Create or Exec path consults them.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def StartJob(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetJobRun(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListJobRuns(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CancelJobRun(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateJobSchedule(self, request, context):
+        """Schedules: a durable cron, interval, or one-shot trigger for a job. "Run
+        once at a specific date and time" is a schedule with a single fire, not a
+        separate mechanism -- see TApiScheduleSpec.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetJobSchedule(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListJobSchedules(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateJobSchedule(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SetJobSchedulePaused(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def TriggerJobSchedule(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteJobSchedule(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListTemplates(self, request, context):
+        """ListTemplates reports the deployment's immutable template catalog: every
+        template_id/version/digest binding Create and RunJob will accept, plus
+        which version each template_id resolves to when a caller omits version.
+        Read-only and the same for every caller, since the catalog is a
+        deployment-wide artifact set, not tenant data -- unlike ListSandboxes,
+        this does not resolve or filter by organization.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_TApiServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -244,6 +543,126 @@ def add_TApiServiceServicer_to_server(servicer, server):
                     servicer.ListOrganizations,
                     request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationsRequest.FromString,
                     response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationsResponse.SerializeToString,
+            ),
+            'GetOrganizationBilling': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOrganizationBilling,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingResponse.SerializeToString,
+            ),
+            'ListOrganizationTopUpOffers': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListOrganizationTopUpOffers,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationTopUpOffersRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationTopUpOffersResponse.SerializeToString,
+            ),
+            'StartOrganizationTopUpPurchase': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartOrganizationTopUpPurchase,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartOrganizationTopUpPurchaseRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartOrganizationTopUpPurchaseResponse.SerializeToString,
+            ),
+            'ApplyOrganizationCoupon': grpc.unary_unary_rpc_method_handler(
+                    servicer.ApplyOrganizationCoupon,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiApplyOrganizationCouponRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiApplyOrganizationCouponResponse.SerializeToString,
+            ),
+            'ListOrganizationCoupons': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListOrganizationCoupons,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationCouponsRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationCouponsResponse.SerializeToString,
+            ),
+            'ListOrganizationInvoices': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListOrganizationInvoices,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationInvoicesRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationInvoicesResponse.SerializeToString,
+            ),
+            'GetOrganizationInvoice': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOrganizationInvoice,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationInvoiceRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationInvoiceResponse.SerializeToString,
+            ),
+            'GetOrganizationBillingOverview': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOrganizationBillingOverview,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingOverviewRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingOverviewResponse.SerializeToString,
+            ),
+            'GetOrganizationUsageBreakdown': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOrganizationUsageBreakdown,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageBreakdownRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageBreakdownResponse.SerializeToString,
+            ),
+            'GetOrganizationUsageSeries': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOrganizationUsageSeries,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageSeriesRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageSeriesResponse.SerializeToString,
+            ),
+            'ListOrganizationPayments': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListOrganizationPayments,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationPaymentsRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationPaymentsResponse.SerializeToString,
+            ),
+            'RunJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.RunJob,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiRunJobRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiRunJobResponse.SerializeToString,
+            ),
+            'StartJob': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartJob,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartJobRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartJobResponse.SerializeToString,
+            ),
+            'GetJobRun': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJobRun,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobRunRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobRunResponse.SerializeToString,
+            ),
+            'ListJobRuns': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListJobRuns,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobRunsRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobRunsResponse.SerializeToString,
+            ),
+            'CancelJobRun': grpc.unary_unary_rpc_method_handler(
+                    servicer.CancelJobRun,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCancelJobRunRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCancelJobRunResponse.SerializeToString,
+            ),
+            'CreateJobSchedule': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateJobSchedule,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCreateJobScheduleRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCreateJobScheduleResponse.SerializeToString,
+            ),
+            'GetJobSchedule': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetJobSchedule,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobScheduleRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobScheduleResponse.SerializeToString,
+            ),
+            'ListJobSchedules': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListJobSchedules,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobSchedulesRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobSchedulesResponse.SerializeToString,
+            ),
+            'UpdateJobSchedule': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateJobSchedule,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiUpdateJobScheduleRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiUpdateJobScheduleResponse.SerializeToString,
+            ),
+            'SetJobSchedulePaused': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetJobSchedulePaused,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiSetJobSchedulePausedRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiSetJobSchedulePausedResponse.SerializeToString,
+            ),
+            'TriggerJobSchedule': grpc.unary_unary_rpc_method_handler(
+                    servicer.TriggerJobSchedule,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiTriggerJobScheduleRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiTriggerJobScheduleResponse.SerializeToString,
+            ),
+            'DeleteJobSchedule': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteJobSchedule,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiDeleteJobScheduleRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiDeleteJobScheduleResponse.SerializeToString,
+            ),
+            'ListTemplates': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListTemplates,
+                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListTemplatesRequest.FromString,
+                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListTemplatesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -580,69 +999,8 @@ class TApiService:
             metadata,
             _registered_method=True)
 
-
-class TApiHostReportServiceStub:
-    """Missing associated documentation comment in .proto file."""
-
-    def __init__(self, channel):
-        """Constructor.
-
-        Args:
-            channel: A grpc.Channel.
-        """
-        self.ReportObservedState = channel.unary_unary(
-                '/tyto.runtime.v1.TApiHostReportService/ReportObservedState',
-                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportObservedStateRequest.SerializeToString,
-                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportObservedStateResponse.FromString,
-                _registered_method=True)
-        self.ReportTerminal = channel.unary_unary(
-                '/tyto.runtime.v1.TApiHostReportService/ReportTerminal',
-                request_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportTerminalRequest.SerializeToString,
-                response_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportTerminalResponse.FromString,
-                _registered_method=True)
-
-
-class TApiHostReportServiceServicer:
-    """Missing associated documentation comment in .proto file."""
-
-    def ReportObservedState(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def ReportTerminal(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-
-def add_TApiHostReportServiceServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-            'ReportObservedState': grpc.unary_unary_rpc_method_handler(
-                    servicer.ReportObservedState,
-                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportObservedStateRequest.FromString,
-                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportObservedStateResponse.SerializeToString,
-            ),
-            'ReportTerminal': grpc.unary_unary_rpc_method_handler(
-                    servicer.ReportTerminal,
-                    request_deserializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportTerminalRequest.FromString,
-                    response_serializer=tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportTerminalResponse.SerializeToString,
-            ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-            'tyto.runtime.v1.TApiHostReportService', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('tyto.runtime.v1.TApiHostReportService', rpc_method_handlers)
-
-
- # This class is part of an EXPERIMENTAL API.
-class TApiHostReportService:
-    """Missing associated documentation comment in .proto file."""
-
     @staticmethod
-    def ReportObservedState(request,
+    def GetOrganizationBilling(request,
             target,
             options=(),
             channel_credentials=None,
@@ -655,9 +1013,9 @@ class TApiHostReportService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/tyto.runtime.v1.TApiHostReportService/ReportObservedState',
-            tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportObservedStateRequest.SerializeToString,
-            tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportObservedStateResponse.FromString,
+            '/tyto.runtime.v1.TApiService/GetOrganizationBilling',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -669,7 +1027,7 @@ class TApiHostReportService:
             _registered_method=True)
 
     @staticmethod
-    def ReportTerminal(request,
+    def ListOrganizationTopUpOffers(request,
             target,
             options=(),
             channel_credentials=None,
@@ -682,9 +1040,603 @@ class TApiHostReportService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/tyto.runtime.v1.TApiHostReportService/ReportTerminal',
-            tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportTerminalRequest.SerializeToString,
-            tyto_dot_runtime_dot_v1_dot_tapi__pb2.ReportTerminalResponse.FromString,
+            '/tyto.runtime.v1.TApiService/ListOrganizationTopUpOffers',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationTopUpOffersRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationTopUpOffersResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StartOrganizationTopUpPurchase(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/StartOrganizationTopUpPurchase',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartOrganizationTopUpPurchaseRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartOrganizationTopUpPurchaseResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ApplyOrganizationCoupon(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ApplyOrganizationCoupon',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiApplyOrganizationCouponRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiApplyOrganizationCouponResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListOrganizationCoupons(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ListOrganizationCoupons',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationCouponsRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationCouponsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListOrganizationInvoices(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ListOrganizationInvoices',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationInvoicesRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationInvoicesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetOrganizationInvoice(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/GetOrganizationInvoice',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationInvoiceRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationInvoiceResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetOrganizationBillingOverview(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/GetOrganizationBillingOverview',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingOverviewRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationBillingOverviewResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetOrganizationUsageBreakdown(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/GetOrganizationUsageBreakdown',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageBreakdownRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageBreakdownResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetOrganizationUsageSeries(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/GetOrganizationUsageSeries',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageSeriesRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetOrganizationUsageSeriesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListOrganizationPayments(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ListOrganizationPayments',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationPaymentsRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListOrganizationPaymentsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/RunJob',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiRunJobRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiRunJobResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def StartJob(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/StartJob',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartJobRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiStartJobResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetJobRun(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/GetJobRun',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobRunRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobRunResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListJobRuns(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ListJobRuns',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobRunsRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobRunsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CancelJobRun(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/CancelJobRun',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCancelJobRunRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCancelJobRunResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CreateJobSchedule(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/CreateJobSchedule',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCreateJobScheduleRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiCreateJobScheduleResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetJobSchedule(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/GetJobSchedule',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobScheduleRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiGetJobScheduleResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListJobSchedules(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ListJobSchedules',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobSchedulesRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListJobSchedulesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def UpdateJobSchedule(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/UpdateJobSchedule',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiUpdateJobScheduleRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiUpdateJobScheduleResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetJobSchedulePaused(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/SetJobSchedulePaused',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiSetJobSchedulePausedRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiSetJobSchedulePausedResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def TriggerJobSchedule(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/TriggerJobSchedule',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiTriggerJobScheduleRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiTriggerJobScheduleResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DeleteJobSchedule(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/DeleteJobSchedule',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiDeleteJobScheduleRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiDeleteJobScheduleResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListTemplates(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/tyto.runtime.v1.TApiService/ListTemplates',
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListTemplatesRequest.SerializeToString,
+            tyto_dot_runtime_dot_v1_dot_tapi__pb2.TApiListTemplatesResponse.FromString,
             options,
             channel_credentials,
             insecure,

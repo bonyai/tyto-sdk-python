@@ -13,6 +13,8 @@ from ._errors import (
     FilesystemError,
     FilesystemLimitError,
     InvalidRequestError,
+    JobRunNotFoundError,
+    JobScheduleNotFoundError,
     RemoteFileExistsError,
     RemoteFileNotFoundError,
     SandboxCreationFailedError,
@@ -51,6 +53,8 @@ def map_rpc_error(
     exec_rpc: bool = False,
     filesystem_rpc: bool = False,
     session_rpc: bool = False,
+    job_rpc: bool = False,
+    job_schedule_rpc: bool = False,
 ) -> TytoError:
     if isinstance(error, TytoError):
         return error
@@ -93,6 +97,10 @@ def map_rpc_error(
         return RemoteFileNotFoundError(details, sandbox_id=sandbox_id, operation_id=operation_id)
     if code == grpc.StatusCode.NOT_FOUND and session_rpc:
         return SessionNotFoundError(details, sandbox_id=sandbox_id, operation_id=operation_id)
+    if code == grpc.StatusCode.NOT_FOUND and job_rpc:
+        return JobRunNotFoundError(details, sandbox_id=sandbox_id, operation_id=operation_id)
+    if code == grpc.StatusCode.NOT_FOUND and job_schedule_rpc:
+        return JobScheduleNotFoundError(details, sandbox_id=sandbox_id, operation_id=operation_id)
     if code == grpc.StatusCode.NOT_FOUND:
         return SandboxNotFoundError(details, sandbox_id=sandbox_id, operation_id=operation_id)
     if code == grpc.StatusCode.ALREADY_EXISTS and filesystem_rpc:

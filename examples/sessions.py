@@ -19,7 +19,7 @@ from tyto import Tyto, Exit, SessionEnded, SessionOutputDropped, Stdout
 def main() -> None:
     api_key = os.environ["BONYA_API_KEY"]
     with Tyto(api_key) as client:
-        with client.create_sandbox(template="ubuntu-24.04") as sandbox:
+        with client.create_sandbox(template="bonya-dev") as sandbox:
             # Session names match ^[a-z][a-z0-9-]{0,31}$ and are the identity
             # you reattach with later.
             info = client.create_session(

@@ -12,6 +12,18 @@ from . import _proto  # noqa: F401
 from ._errors import InvalidRequestError, TimeoutError
 from ._errors import SandboxCreationTimeoutError, SandboxNotFoundError
 from ._grpc_errors import is_retryable_transport_error, map_rpc_error
+from ._jobs import (
+    JobRun,
+    JobRunDetail,
+    JobSchedule,
+    JobSpec,
+    ScheduleSpec,
+    job_run_detail_from_proto,
+    job_run_from_proto,
+    job_schedule_from_proto,
+    job_spec_to_proto,
+    schedule_spec_to_proto,
+)
 from ._previews import Preview, PreviewAuth
 from ._sandbox import DeleteResult, ResumeResult, Sandbox, Snapshot
 from ._sessions import SessionInfo, SessionList, SessionStream
@@ -25,11 +37,11 @@ from ._transport import (
     sleep_with_deadline,
 )
 from ._types import Status, Wait
-from ._proto.tyto.runtime.v1 import host_pb2, tapi_pb2, tapi_pb2_grpc
+from ._proto.tyto.runtime.v1 import common_pb2, tapi_pb2, tapi_pb2_grpc
 
 
 WaitInput = Wait | Literal["ready", "none"]
-_host_pb2: Any = host_pb2
+_common_pb2: Any = common_pb2
 _tapi_pb2: Any = tapi_pb2
 
 #: gRPC carrier for org context. The REST surface names the same value
@@ -90,6 +102,32 @@ class TApiStub(Protocol):
 
     def ListOrganizations(self, request: object, *, timeout: float) -> object: ...
 
+    def ListTemplates(self, request: object, *, timeout: float) -> object: ...
+
+    def RunJob(self, request: object, *, timeout: float) -> object: ...
+
+    def StartJob(self, request: object, *, timeout: float) -> object: ...
+
+    def GetJobRun(self, request: object, *, timeout: float) -> object: ...
+
+    def ListJobRuns(self, request: object, *, timeout: float) -> object: ...
+
+    def CancelJobRun(self, request: object, *, timeout: float) -> object: ...
+
+    def CreateJobSchedule(self, request: object, *, timeout: float) -> object: ...
+
+    def GetJobSchedule(self, request: object, *, timeout: float) -> object: ...
+
+    def ListJobSchedules(self, request: object, *, timeout: float) -> object: ...
+
+    def UpdateJobSchedule(self, request: object, *, timeout: float) -> object: ...
+
+    def SetJobSchedulePaused(self, request: object, *, timeout: float) -> object: ...
+
+    def TriggerJobSchedule(self, request: object, *, timeout: float) -> object: ...
+
+    def DeleteJobSchedule(self, request: object, *, timeout: float) -> object: ...
+
 
 class Tyto:
     def __init__(
@@ -127,7 +165,6 @@ class Tyto:
         self._pool = ChannelPool(channel_credentials(ca_bundle_value), _channel_factory)
         self._tapi_stub_factory = _tapi_stub_factory or tapi_pb2_grpc.TApiServiceStub
         self._guest_stub_factory = _guest_stub_factory
-        self.sandboxes = SandboxCollection(self)
 
     def close(self) -> None:
         self._pool.close()
@@ -193,42 +230,113 @@ class Tyto:
     def _secrets(self, *extra: str | None) -> list[str]:
         return [value for value in (self._api_key, *extra) if value]
 
-    # Flat, client-level methods -- client.create_sandbox(...) alongside
-    # client.sandboxes.create(...), and (below) client.create_session(...)
-    # alongside sandbox.sessions.create(...). Both spellings exist and both
-    # stay: some callers read better with the namespace (grouping every
-    # sandbox operation under one attribute is what makes sandbox.files and
-    # sandbox.sessions discoverable next to it), others read better as a verb
-    # straight off the client. Every method here is a thin, no-behavior
-    # delegation to the same-named method on the collection, sandbox, or
-    # sandbox namespace, so there is exactly one implementation to keep
-    # correct.
+    # Flat, client-level sandbox CRUD -- create_sandbox, get_sandbox,
+    # get_sandbox_by_name, list_sandboxes, delete_sandbox, resume_sandbox.
+    # There is no sandbox-collection namespace to also offer these under;
+    # this is the one implementation.
     #
-    # sandbox.files keeps its namespace only: file operations take a path as
-    # well as a sandbox id, and "client.read_file(sandbox_id, path)" was
-    # judged not to read better than "sandbox.files.read(path)".
+    # File operations (read_file, write_file, upload_file, ...) and managed
+    # sessions/previews are flat methods directly on Sandbox instead of
+    # sandbox.files/sandbox.sessions/sandbox.previews namespaces -- see
+    # _sandbox.py.
 
     def create_sandbox(
         self,
         *,
-        template: str,
+        template: str | None = None,
         version: str | None = None,
         wait: WaitInput = Wait.READY,
         idempotency_key: str | None = None,
         name: str | None = None,
     ) -> Sandbox:
-        """sandboxes.create()."""
-        return self.sandboxes.create(
-            template=template, version=version, wait=wait, idempotency_key=idempotency_key, name=name
+        """template may be omitted to use the deployment's configured default
+        template, if it has one; the server rejects the request if it does
+        not."""
+        wait_value = _normalize_wait(wait)
+        key = idempotency_key or uuid.uuid4().hex + uuid.uuid4().hex
+        request = _tapi_pb2.TApiServiceCreateRequest(
+            api_key=self._api_key,
+            idempotency_key=key,
+            template=_common_pb2.TemplateBinding(template_id=template or "", version=version or ""),
+            wait=(
+                _tapi_pb2.CREATE_WAIT_READY
+                if wait_value is Wait.READY
+                else _tapi_pb2.CREATE_WAIT_NONE
+            ),
+            name=name or "",
         )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        last_error: BaseException | None = None
+        while True:
+            try:
+                response = self._tapi_stub().Create(request, timeout=deadline.remaining())
+                return _sandbox_from_create(self, response, wait_value, key)
+            except BaseException as exc:
+                last_error = exc
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    if isinstance(exc, TimeoutError):
+                        raise SandboxCreationTimeoutError(
+                            exc.message,
+                            idempotency_key=key,
+                        ) from exc
+                    raise map_rpc_error(
+                        exc,
+                        secrets=self._secrets(key),
+                        idempotency_key=key,
+                        create=True,
+                    ) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+            if last_error is None:
+                raise TimeoutError("operation deadline exhausted")
 
     def get_sandbox(self, sandbox_id: str) -> Sandbox:
-        """sandboxes.get()."""
-        return self.sandboxes.get(sandbox_id)
+        """Reconnect to an existing sandbox by id."""
+        if not sandbox_id:
+            raise InvalidRequestError("sandbox_id is required")
+        request = _tapi_pb2.TApiGetSandboxRequest(api_key=self._api_key, sandbox_id=sandbox_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().GetSandbox(request, timeout=deadline.remaining())
+                return _sandbox_from_get(self, response, requested_sandbox_id=sandbox_id)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(
+                        exc,
+                        secrets=self._secrets(),
+                        sandbox_id=sandbox_id,
+                    ) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
 
     def get_sandbox_by_name(self, name: str) -> Sandbox:
-        """sandboxes.get_by_name()."""
-        return self.sandboxes.get_by_name(name)
+        """Reconnect to an existing sandbox by name.
+
+        Names are not unique. This resolves the name to a single sandbox and
+        then fetches it by id, and raises rather than guessing when the name
+        matches more than one: picking one silently would let a later delete
+        destroy an arbitrary sandbox.
+        """
+        if not name:
+            raise InvalidRequestError("name is required")
+        # Two is enough to tell "one match" from "more than one" without
+        # paging the whole organization.
+        matches = builtins.list(self.list_sandboxes(name=name, limit=2))
+        if not matches:
+            raise SandboxNotFoundError(f"no sandbox is named {name}")
+        if len(matches) > 1:
+            raise InvalidRequestError(
+                f"more than one sandbox is named {name}, including "
+                f"{matches[0].id} and {matches[1].id}; use get_sandbox() with a sandbox id"
+            )
+        return self.get_sandbox(matches[0].id)
 
     def list_sandboxes(
         self,
@@ -237,34 +345,148 @@ class Tyto:
         limit: int | None = None,
         name: str | None = None,
     ) -> Iterator[SandboxSummary]:
-        """sandboxes.list()."""
-        return self.sandboxes.list(states=states, limit=limit, name=name)
+        state_values = _normalize_state_filters(states)
+        if limit is not None:
+            if isinstance(limit, bool) or not isinstance(limit, int):
+                raise InvalidRequestError("limit must be a non-negative integer")
+            if limit < 0:
+                raise InvalidRequestError("limit must be a non-negative integer")
+            if limit == 0:
+                return iter(())
+        return self._list_sandbox_pages(state_values=state_values, limit=limit, name=name or "")
 
     def delete_sandbox(self, sandbox_id: str) -> DeleteResult:
-        """sandboxes.delete(): a single id-only RPC, with no local handle to
-        check for an already-known deletion. sandbox.delete() is the
-        handle-aware form, and is what a Sandbox obtained from
-        create_sandbox() or get_sandbox() should generally use instead, so
-        that a repeat call is a local no-op rather than a second RPC."""
-        return self.sandboxes.delete(sandbox_id)
+        """Delete a sandbox by id in a single RPC, without first fetching it.
+
+        Sandbox.delete() also calls through to this same RPC and additionally
+        short-circuits locally when called twice on the same handle -- there
+        is no handle here to remember that, so a second call here always
+        makes a second RPC, and its already_deleted reports what the server
+        observed rather than what this SDK remembers.
+        """
+        if not sandbox_id:
+            raise InvalidRequestError("sandbox_id is required")
+        request = _tapi_pb2.TApiDeleteSandboxRequest(api_key=self._api_key, sandbox_id=sandbox_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().DeleteSandbox(request, timeout=deadline.remaining())
+                return DeleteResult(
+                    sandbox_id=getattr(response, "sandbox_id", sandbox_id) or sandbox_id,
+                    already_deleted=bool(getattr(response, "already_deleted", False)),
+                )
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), sandbox_id=sandbox_id) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
 
     def resume_sandbox(self, sandbox_id: str, *, idempotency_key: str | None = None) -> ResumeResult:
-        """sandboxes.resume(): a single id-only RPC, with no local handle to
-        update afterward. sandbox.resume() is the handle-aware form, and is
-        what a Sandbox should generally use instead, so that its exec
-        capability and endpoint are refreshed for the next call rather than
-        left stale."""
-        return self.sandboxes.resume(sandbox_id, idempotency_key=idempotency_key)
+        """Resume a sandbox by id in a single RPC, without first fetching it.
 
-    # Flat, client-level forms of sandbox.sessions, sandbox.previews, and
-    # sandbox.snapshot(). Unlike the sandbox-collection methods above, each
-    # of these needs a resolved Sandbox to call through -- sessions and
-    # previews are scoped to one sandbox's RPC surface, and snapshot
-    # creation checks the sandbox's last observed status -- so every method
-    # here does a get_sandbox() first and then delegates, which costs one
-    # extra round trip compared to already holding the handle. Call
-    # sandbox.sessions.create (or the equivalent) directly instead when a
-    # Sandbox is already in hand, such as right after create_sandbox().
+        Sandbox.resume() also calls through to the same RPC via
+        _resume_sandbox(), additionally copying the refreshed capability and
+        exec endpoint onto its own handle, since only a handle has those to
+        update -- ResumeResult itself never carries them.
+        """
+        result, _response = self._resume_sandbox(sandbox_id, idempotency_key=idempotency_key)
+        return result
+
+    def _resume_sandbox(self, sandbox_id: str, *, idempotency_key: str | None = None) -> tuple[ResumeResult, Any]:
+        """The one ResumeSandbox call site. Returns the raw response alongside
+        the mapped ResumeResult so Sandbox.resume() can read the capability
+        and exec endpoint fields ResumeResult does not expose, without a
+        second implementation of the retry loop.
+
+        Unlike Sandbox.resume(), this does not check for a locally known
+        failed status first: there is no handle to check, so the server is
+        always asked, and a failed sandbox's rejection comes back as an
+        ordinary RPC error.
+        """
+        if not sandbox_id:
+            raise InvalidRequestError("sandbox_id is required")
+        key = idempotency_key or uuid.uuid4().hex + uuid.uuid4().hex
+        request = _tapi_pb2.TApiResumeSandboxRequest(
+            api_key=self._api_key,
+            sandbox_id=sandbox_id,
+            idempotency_key=key,
+        )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().ResumeSandbox(request, timeout=deadline.remaining())
+                result = ResumeResult(
+                    sandbox_id=getattr(response, "sandbox_id", sandbox_id) or sandbox_id,
+                    lifecycle_operation_id=getattr(response, "lifecycle_operation_id", ""),
+                    already_running=bool(getattr(response, "already_running", False)),
+                )
+                return result, response
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(
+                        exc,
+                        secrets=self._secrets(),
+                        sandbox_id=sandbox_id,
+                        idempotency_key=key,
+                    ) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def _list_sandbox_pages(
+        self, *, state_values: builtins.list[int], limit: int | None, name: str = ""
+    ) -> Iterator[SandboxSummary]:
+        yielded = 0
+        page_token = ""
+        while True:
+            page_size = 0 if limit is None else min(100, limit - yielded)
+            request = _tapi_pb2.TApiListSandboxesRequest(
+                api_key=self._api_key,
+                states=state_values,
+                page_size=page_size,
+                page_token=page_token,
+                name=name,
+            )
+            deadline = Deadline.start(self._timeout)
+            attempts = 0
+            backoff = 0.05
+            while True:
+                try:
+                    response = self._tapi_stub().ListSandboxes(request, timeout=deadline.remaining())
+                    break
+                except BaseException as exc:
+                    if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                        raise map_rpc_error(
+                            exc,
+                            secrets=self._secrets(page_token),
+                        ) from exc
+                    attempts += 1
+                    sleep_with_deadline(backoff, deadline)
+                    backoff = min(backoff * 2, 0.5)
+            for sandbox in getattr(response, "sandboxes", []):
+                if limit is not None and yielded >= limit:
+                    return
+                yield _summary_from_metadata(sandbox)
+                yielded += 1
+            page_token = getattr(response, "next_page_token", "")
+            if not page_token or (limit is not None and yielded >= limit):
+                return
+
+    # Flat, client-level forms of sandbox.create_session/list_sessions/...,
+    # sandbox.create_preview/list_previews/..., and sandbox.snapshot().
+    # Unlike the sandbox CRUD methods above, each of these needs a resolved
+    # Sandbox to call through -- sessions and previews are scoped to one
+    # sandbox's RPC surface, and snapshot creation checks the sandbox's last
+    # observed status -- so every method here does a get_sandbox() first and
+    # then delegates, which costs one extra round trip compared to already
+    # holding the handle. Call sandbox.create_session (or the equivalent)
+    # directly instead when a Sandbox is already in hand, such as right
+    # after create_sandbox().
 
     def create_session(
         self,
@@ -278,26 +500,26 @@ class Tyto:
         rows: int = 0,
         replace: bool = False,
     ) -> SessionInfo:
-        """get_sandbox() followed by sandbox.sessions.create()."""
+        """get_sandbox() followed by sandbox.create_session()."""
         sandbox = self.get_sandbox(sandbox_id)
-        return sandbox.sessions.create(name, command, env=env, cwd=cwd, cols=cols, rows=rows, replace=replace)
+        return sandbox.create_session(name, command, env=env, cwd=cwd, cols=cols, rows=rows, replace=replace)
 
     def list_sessions(self, sandbox_id: str) -> SessionList:
-        """get_sandbox() followed by sandbox.sessions.list()."""
+        """get_sandbox() followed by sandbox.list_sessions()."""
         sandbox = self.get_sandbox(sandbox_id)
-        return sandbox.sessions.list()
+        return sandbox.list_sessions()
 
     def kill_session(self, sandbox_id: str, name: str, *, signal: str = "TERM", grace_ms: int = 5000) -> SessionInfo:
-        """get_sandbox() followed by sandbox.sessions.kill()."""
+        """get_sandbox() followed by sandbox.kill_session()."""
         sandbox = self.get_sandbox(sandbox_id)
-        return sandbox.sessions.kill(name, signal=signal, grace_ms=grace_ms)
+        return sandbox.kill_session(name, signal=signal, grace_ms=grace_ms)
 
     def attach_session(
         self, sandbox_id: str, name: str, *, cols: int = 0, rows: int = 0, max_replay_bytes: int = 0
     ) -> SessionStream:
-        """get_sandbox() followed by sandbox.sessions.attach()."""
+        """get_sandbox() followed by sandbox.attach_session()."""
         sandbox = self.get_sandbox(sandbox_id)
-        return sandbox.sessions.attach(name, cols=cols, rows=rows, max_replay_bytes=max_replay_bytes)
+        return sandbox.attach_session(name, cols=cols, rows=rows, max_replay_bytes=max_replay_bytes)
 
     def create_preview(
         self,
@@ -308,19 +530,19 @@ class Tyto:
         name: str | None = None,
         idempotency_key: str | None = None,
     ) -> Preview:
-        """get_sandbox() followed by sandbox.previews.create()."""
+        """get_sandbox() followed by sandbox.create_preview()."""
         sandbox = self.get_sandbox(sandbox_id)
-        return sandbox.previews.create(port, auth=auth, name=name, idempotency_key=idempotency_key)
+        return sandbox.create_preview(port, auth=auth, name=name, idempotency_key=idempotency_key)
 
     def list_previews(self, sandbox_id: str) -> builtins.list[Preview]:
-        """get_sandbox() followed by sandbox.previews.list()."""
+        """get_sandbox() followed by sandbox.list_previews()."""
         sandbox = self.get_sandbox(sandbox_id)
-        return sandbox.previews.list()
+        return sandbox.list_previews()
 
     def delete_preview(self, sandbox_id: str, preview_id: str) -> None:
-        """get_sandbox() followed by sandbox.previews.delete()."""
+        """get_sandbox() followed by sandbox.delete_preview()."""
         sandbox = self.get_sandbox(sandbox_id)
-        sandbox.previews.delete(preview_id)
+        sandbox.delete_preview(preview_id)
 
     def create_snapshot(self, sandbox_id: str, *, idempotency_key: str | None = None) -> Snapshot:
         """get_sandbox() followed by sandbox.snapshot()."""
@@ -336,6 +558,374 @@ class Tyto:
         sandbox = self.get_sandbox(sandbox_id)
         snapshot = Snapshot(client=self, snapshot_id=snapshot_id, source_sandbox_id=sandbox.id)
         snapshot.delete()
+
+    # Jobs: a managed run of a command or script, on a new or existing
+    # sandbox. Client-level only, like list_organizations -- a job is not
+    # scoped to a sandbox handle the way sessions/previews/snapshots are, so
+    # there is no sandbox.jobs namespace to also offer.
+
+    def run_job(self, spec: JobSpec, *, idempotency_key: str | None = None) -> JobRun:
+        """Run a job and block until it finishes, bounded by the client's own
+        timeout. Use start_job() instead for a job that may outlive one call."""
+        request = _tapi_pb2.TApiRunJobRequest(
+            api_key=self._api_key,
+            idempotency_key=idempotency_key or _generate_idempotency_key(),
+            spec=job_spec_to_proto(spec, tapi_pb2=_tapi_pb2, common_pb2=_common_pb2),
+        )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().RunJob(request, timeout=deadline.remaining())
+                run = getattr(response, "run", None)
+                if run is None:
+                    raise InvalidRequestError("RunJob response is missing run")
+                return job_run_from_proto(run)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(
+                        exc,
+                        secrets=self._secrets(request.idempotency_key),
+                        idempotency_key=request.idempotency_key,
+                        job_rpc=True,
+                    ) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def start_job(self, spec: JobSpec, *, idempotency_key: str | None = None) -> tuple[str, bool]:
+        """Start a job durably and return immediately with its run id,
+        without waiting for it to finish. Returns (run_id, already_running).
+        Use get_job_run() to poll for the result."""
+        request = _tapi_pb2.TApiStartJobRequest(
+            api_key=self._api_key,
+            idempotency_key=idempotency_key or _generate_idempotency_key(),
+            spec=job_spec_to_proto(spec, tapi_pb2=_tapi_pb2, common_pb2=_common_pb2),
+        )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().StartJob(request, timeout=deadline.remaining())
+                return getattr(response, "run_id", ""), bool(getattr(response, "already_running", False))
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(
+                        exc,
+                        secrets=self._secrets(request.idempotency_key),
+                        idempotency_key=request.idempotency_key,
+                        job_rpc=True,
+                    ) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def get_job_run(self, run_id: str) -> JobRunDetail:
+        """Fetch a job run's full detail, including its stored spec and
+        activity timeline."""
+        if not run_id:
+            raise InvalidRequestError("run_id is required")
+        request = _tapi_pb2.TApiGetJobRunRequest(api_key=self._api_key, run_id=run_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().GetJobRun(request, timeout=deadline.remaining())
+                detail = getattr(response, "detail", None)
+                if detail is None:
+                    raise InvalidRequestError("GetJobRun response is missing detail")
+                return job_run_detail_from_proto(detail)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def list_job_runs(
+        self, *, sandbox_id: str = "", schedule_id: str = "", limit: int | None = None
+    ) -> Iterator[JobRun]:
+        """List job runs, newest first, paging internally as needed.
+
+        A limit of None returns every matching run.
+        """
+        if limit is not None:
+            if isinstance(limit, bool) or not isinstance(limit, int):
+                raise InvalidRequestError("limit must be a non-negative integer")
+            if limit < 0:
+                raise InvalidRequestError("limit must be a non-negative integer")
+            if limit == 0:
+                return
+        yielded = 0
+        page_token = ""
+        while True:
+            page_size = 0 if limit is None else min(100, limit - yielded)
+            request = _tapi_pb2.TApiListJobRunsRequest(
+                api_key=self._api_key,
+                sandbox_id=sandbox_id,
+                schedule_id=schedule_id,
+                page_size=page_size,
+                page_token=page_token,
+            )
+            deadline = Deadline.start(self._timeout)
+            attempts = 0
+            backoff = 0.05
+            while True:
+                try:
+                    response = self._tapi_stub().ListJobRuns(request, timeout=deadline.remaining())
+                    break
+                except BaseException as exc:
+                    if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                        raise map_rpc_error(exc, secrets=self._secrets(page_token), job_rpc=True) from exc
+                    attempts += 1
+                    sleep_with_deadline(backoff, deadline)
+                    backoff = min(backoff * 2, 0.5)
+            for run in getattr(response, "runs", []):
+                if limit is not None and yielded >= limit:
+                    return
+                yield job_run_from_proto(run)
+                yielded += 1
+            page_token = getattr(response, "next_page_token", "")
+            if not page_token or (limit is not None and yielded >= limit):
+                return
+
+    def cancel_job_run(self, run_id: str) -> None:
+        """Request cancellation of a running job. This cancels rather than
+        terminates, so the run's own cleanup (e.g. deleting a sandbox it
+        created) still executes."""
+        if not run_id:
+            raise InvalidRequestError("run_id is required")
+        request = _tapi_pb2.TApiCancelJobRunRequest(api_key=self._api_key, run_id=run_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                self._tapi_stub().CancelJobRun(request, timeout=deadline.remaining())
+                return
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def create_job_schedule(
+        self, schedule: ScheduleSpec, job: JobSpec, *, idempotency_key: str | None = None
+    ) -> JobSchedule:
+        """Create a durable cron, interval, or one-shot trigger for a job.
+
+        Exactly one of schedule.cron_expressions, interval_seconds, and
+        run_at_unix_nanos is required.
+        """
+        request = _tapi_pb2.TApiCreateJobScheduleRequest(
+            api_key=self._api_key,
+            idempotency_key=idempotency_key or _generate_idempotency_key(),
+            schedule=schedule_spec_to_proto(schedule, tapi_pb2=_tapi_pb2),
+            spec=job_spec_to_proto(job, tapi_pb2=_tapi_pb2, common_pb2=_common_pb2),
+        )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().CreateJobSchedule(request, timeout=deadline.remaining())
+                schedule_result = getattr(response, "schedule", None)
+                if schedule_result is None:
+                    raise InvalidRequestError("response is missing schedule")
+                return job_schedule_from_proto(schedule_result)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(
+                        exc,
+                        secrets=self._secrets(request.idempotency_key),
+                        idempotency_key=request.idempotency_key,
+                        job_schedule_rpc=True,
+                    ) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def get_job_schedule(self, schedule_id: str) -> JobSchedule:
+        """Fetch a job schedule by id."""
+        if not schedule_id:
+            raise InvalidRequestError("schedule_id is required")
+        request = _tapi_pb2.TApiGetJobScheduleRequest(api_key=self._api_key, schedule_id=schedule_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().GetJobSchedule(request, timeout=deadline.remaining())
+                schedule_result = getattr(response, "schedule", None)
+                if schedule_result is None:
+                    raise InvalidRequestError("response is missing schedule")
+                return job_schedule_from_proto(schedule_result)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_schedule_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def list_job_schedules(self, *, limit: int | None = None) -> Iterator[JobSchedule]:
+        """List job schedules, paging internally as needed.
+
+        A limit of None returns every schedule.
+        """
+        if limit is not None:
+            if isinstance(limit, bool) or not isinstance(limit, int):
+                raise InvalidRequestError("limit must be a non-negative integer")
+            if limit < 0:
+                raise InvalidRequestError("limit must be a non-negative integer")
+            if limit == 0:
+                return
+        yielded = 0
+        page_token = ""
+        while True:
+            page_size = 0 if limit is None else min(100, limit - yielded)
+            request = _tapi_pb2.TApiListJobSchedulesRequest(
+                api_key=self._api_key, page_size=page_size, page_token=page_token
+            )
+            deadline = Deadline.start(self._timeout)
+            attempts = 0
+            backoff = 0.05
+            while True:
+                try:
+                    response = self._tapi_stub().ListJobSchedules(request, timeout=deadline.remaining())
+                    break
+                except BaseException as exc:
+                    if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                        raise map_rpc_error(exc, secrets=self._secrets(page_token), job_schedule_rpc=True) from exc
+                    attempts += 1
+                    sleep_with_deadline(backoff, deadline)
+                    backoff = min(backoff * 2, 0.5)
+            for schedule in getattr(response, "schedules", []):
+                if limit is not None and yielded >= limit:
+                    return
+                yield job_schedule_from_proto(schedule)
+                yielded += 1
+            page_token = getattr(response, "next_page_token", "")
+            if not page_token or (limit is not None and yielded >= limit):
+                return
+
+    def update_job_schedule(self, schedule_id: str, schedule: ScheduleSpec, job: JobSpec) -> JobSchedule:
+        """Replace a job schedule's timing and job spec.
+
+        Replaces the whole schedule, so pass every field you want to keep,
+        not just the one you're changing.
+        """
+        if not schedule_id:
+            raise InvalidRequestError("schedule_id is required")
+        request = _tapi_pb2.TApiUpdateJobScheduleRequest(
+            api_key=self._api_key,
+            schedule_id=schedule_id,
+            schedule=schedule_spec_to_proto(schedule, tapi_pb2=_tapi_pb2),
+            spec=job_spec_to_proto(job, tapi_pb2=_tapi_pb2, common_pb2=_common_pb2),
+        )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().UpdateJobSchedule(request, timeout=deadline.remaining())
+                schedule_result = getattr(response, "schedule", None)
+                if schedule_result is None:
+                    raise InvalidRequestError("response is missing schedule")
+                return job_schedule_from_proto(schedule_result)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_schedule_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def set_job_schedule_paused(self, schedule_id: str, paused: bool, *, note: str = "") -> JobSchedule:
+        """Pause or resume a job schedule, optionally recording a note."""
+        if not schedule_id:
+            raise InvalidRequestError("schedule_id is required")
+        request = _tapi_pb2.TApiSetJobSchedulePausedRequest(
+            api_key=self._api_key, schedule_id=schedule_id, paused=paused, note=note
+        )
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().SetJobSchedulePaused(request, timeout=deadline.remaining())
+                schedule_result = getattr(response, "schedule", None)
+                if schedule_result is None:
+                    raise InvalidRequestError("response is missing schedule")
+                return job_schedule_from_proto(schedule_result)
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_schedule_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def trigger_job_schedule(self, schedule_id: str) -> None:
+        """Fire one run of a job schedule immediately, overriding the
+        schedule's own timing."""
+        if not schedule_id:
+            raise InvalidRequestError("schedule_id is required")
+        request = _tapi_pb2.TApiTriggerJobScheduleRequest(api_key=self._api_key, schedule_id=schedule_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                self._tapi_stub().TriggerJobSchedule(request, timeout=deadline.remaining())
+                return
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_schedule_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def delete_job_schedule(self, schedule_id: str) -> None:
+        """Permanently delete a job schedule. Does not cancel any run
+        currently in flight."""
+        if not schedule_id:
+            raise InvalidRequestError("schedule_id is required")
+        request = _tapi_pb2.TApiDeleteJobScheduleRequest(api_key=self._api_key, schedule_id=schedule_id)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                self._tapi_stub().DeleteJobSchedule(request, timeout=deadline.remaining())
+                return
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets(), job_schedule_rpc=True) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
+
+    def list_templates(self) -> builtins.list[Template]:
+        """List the deployment's template catalog: every template_id and
+        version create_sandbox/run_job will accept, and which version each
+        template_id resolves to when a caller omits version. Same catalog
+        for every caller; not paginated."""
+        request = _tapi_pb2.TApiListTemplatesRequest(api_key=self._api_key)
+        deadline = Deadline.start(self._timeout)
+        attempts = 0
+        backoff = 0.05
+        while True:
+            try:
+                response = self._tapi_stub().ListTemplates(request, timeout=deadline.remaining())
+                return [_template_from_proto(t) for t in getattr(response, "templates", [])]
+            except BaseException as exc:
+                if not is_retryable_transport_error(exc) or attempts >= self._max_retries:
+                    raise map_rpc_error(exc, secrets=self._secrets()) from exc
+                attempts += 1
+                sleep_with_deadline(backoff, deadline)
+                backoff = min(backoff * 2, 0.5)
 
 
 # Bonya was this class's name in 1.0, from when the SDK's package and client
@@ -372,244 +962,65 @@ class SandboxSummary:
     name: str = ""
 
 
-class SandboxCollection:
-    def __init__(self, client: Tyto) -> None:
-        self._client = client
+@dataclass(frozen=True)
+class TemplateStack:
+    """One language or runtime toolchain preinstalled in a template."""
 
-    def create(
-        self,
-        *,
-        template: str,
-        version: str | None = None,
-        wait: WaitInput = Wait.READY,
-        idempotency_key: str | None = None,
-        name: str | None = None,
-    ) -> Sandbox:
-        if not template:
-            raise InvalidRequestError("template is required")
-        wait_value = _normalize_wait(wait)
-        key = idempotency_key or uuid.uuid4().hex + uuid.uuid4().hex
-        request = _tapi_pb2.TApiServiceCreateRequest(
-            api_key=self._client._api_key,
-            idempotency_key=key,
-            template=_host_pb2.TemplateBinding(template_id=template, version=version or ""),
-            wait=(
-                _tapi_pb2.CREATE_WAIT_READY
-                if wait_value is Wait.READY
-                else _tapi_pb2.CREATE_WAIT_NONE
-            ),
-            name=name or "",
-        )
-        deadline = Deadline.start(self._client._timeout)
-        attempts = 0
-        backoff = 0.05
-        last_error: BaseException | None = None
-        while True:
-            try:
-                response = self._client._tapi_stub().Create(request, timeout=deadline.remaining())
-                return _sandbox_from_create(self._client, response, wait_value, key)
-            except BaseException as exc:
-                last_error = exc
-                if not is_retryable_transport_error(exc) or attempts >= self._client._max_retries:
-                    if isinstance(exc, TimeoutError):
-                        raise SandboxCreationTimeoutError(
-                            exc.message,
-                            idempotency_key=key,
-                        ) from exc
-                    raise map_rpc_error(
-                        exc,
-                        secrets=self._client._secrets(key),
-                        idempotency_key=key,
-                        create=True,
-                    ) from exc
-                attempts += 1
-                sleep_with_deadline(backoff, deadline)
-                backoff = min(backoff * 2, 0.5)
-            if last_error is None:
-                raise TimeoutError("operation deadline exhausted")
+    name: str
+    version: str
 
-    def get(self, sandbox_id: str) -> Sandbox:
-        if not sandbox_id:
-            raise InvalidRequestError("sandbox_id is required")
-        request = _tapi_pb2.TApiGetSandboxRequest(api_key=self._client._api_key, sandbox_id=sandbox_id)
-        deadline = Deadline.start(self._client._timeout)
-        attempts = 0
-        backoff = 0.05
-        while True:
-            try:
-                response = self._client._tapi_stub().GetSandbox(request, timeout=deadline.remaining())
-                return _sandbox_from_get(self._client, response, requested_sandbox_id=sandbox_id)
-            except BaseException as exc:
-                if not is_retryable_transport_error(exc) or attempts >= self._client._max_retries:
-                    raise map_rpc_error(
-                        exc,
-                        secrets=self._client._secrets(),
-                        sandbox_id=sandbox_id,
-                    ) from exc
-                attempts += 1
-                sleep_with_deadline(backoff, deadline)
-                backoff = min(backoff * 2, 0.5)
 
-    def list(
-        self,
-        *,
-        states: Iterable[Status] | None = None,
-        limit: int | None = None,
-        name: str | None = None,
-    ) -> Iterator[SandboxSummary]:
-        state_values = _normalize_state_filters(states)
-        if limit is not None:
-            if isinstance(limit, bool) or not isinstance(limit, int):
-                raise InvalidRequestError("limit must be a non-negative integer")
-            if limit < 0:
-                raise InvalidRequestError("limit must be a non-negative integer")
-            if limit == 0:
-                return iter(())
-        return self._list_pages(state_values=state_values, limit=limit, name=name or "")
+@dataclass(frozen=True)
+class TemplateMetadata:
+    """The operating system and tools preinstalled in a Template.
 
-    def get_by_name(self, name: str) -> Sandbox:
-        """Reconnect to an existing sandbox by name.
+    A catalog entry without annotations yields its zero value.
+    """
 
-        Names are not unique. This resolves the name to a single sandbox and
-        then fetches it by id, and raises rather than guessing when the name
-        matches more than one: picking one silently would let a later delete
-        destroy an arbitrary sandbox.
-        """
-        if not name:
-            raise InvalidRequestError("name is required")
-        # Two is enough to tell "one match" from "more than one" without
-        # paging the whole organization.
-        matches = builtins.list(self.list(name=name, limit=2))
-        if not matches:
-            raise SandboxNotFoundError(f"no sandbox is named {name}")
-        if len(matches) > 1:
-            raise InvalidRequestError(
-                f"more than one sandbox is named {name}, including "
-                f"{matches[0].id} and {matches[1].id}; use get() with a sandbox id"
-            )
-        return self.get(matches[0].id)
+    description: str = ""
+    os: str = ""
+    os_version: str = ""
+    stacks: tuple[TemplateStack, ...] = ()
+    agent_cli_support: tuple[str, ...] = ()
 
-    def delete(self, sandbox_id: str) -> DeleteResult:
-        """Delete a sandbox by id in a single RPC, without first fetching it.
 
-        Sandbox.delete() also calls through to this same RPC and additionally
-        short-circuits locally when called twice on the same handle -- there
-        is no handle here to remember that, so a second call here always
-        makes a second RPC, and its already_deleted reports what the server
-        observed rather than what this SDK remembers.
-        """
-        if not sandbox_id:
-            raise InvalidRequestError("sandbox_id is required")
-        request = _tapi_pb2.TApiDeleteSandboxRequest(api_key=self._client._api_key, sandbox_id=sandbox_id)
-        deadline = Deadline.start(self._client._timeout)
-        attempts = 0
-        backoff = 0.05
-        while True:
-            try:
-                response = self._client._tapi_stub().DeleteSandbox(request, timeout=deadline.remaining())
-                return DeleteResult(
-                    sandbox_id=getattr(response, "sandbox_id", sandbox_id) or sandbox_id,
-                    already_deleted=bool(getattr(response, "already_deleted", False)),
-                )
-            except BaseException as exc:
-                if not is_retryable_transport_error(exc) or attempts >= self._client._max_retries:
-                    raise map_rpc_error(exc, secrets=self._client._secrets(), sandbox_id=sandbox_id) from exc
-                attempts += 1
-                sleep_with_deadline(backoff, deadline)
-                backoff = min(backoff * 2, 0.5)
+@dataclass(frozen=True)
+class Template:
+    """One template_id/version binding the deployment's catalog offers to
+    create_sandbox and run_job.
 
-    def resume(self, sandbox_id: str, *, idempotency_key: str | None = None) -> ResumeResult:
-        """Resume a sandbox by id in a single RPC, without first fetching it.
+    One entry per version, not one per template_id: a template_id with
+    several published versions appears once per version, and is_default
+    marks the one a caller resolving by template_id alone (version omitted)
+    gets.
+    """
 
-        Sandbox.resume() also calls through to the same RPC via _resume(),
-        additionally copying the refreshed capability and exec endpoint onto
-        its own handle, since only a handle has those to update --
-        ResumeResult itself never carries them.
-        """
-        result, _response = self._resume(sandbox_id, idempotency_key=idempotency_key)
-        return result
+    id: str
+    version: str
+    digest: str
+    is_default: bool
+    metadata: TemplateMetadata
 
-    def _resume(self, sandbox_id: str, *, idempotency_key: str | None = None) -> tuple[ResumeResult, Any]:
-        """The one ResumeSandbox call site. Returns the raw response alongside
-        the mapped ResumeResult so Sandbox.resume() can read the capability
-        and exec endpoint fields ResumeResult does not expose, without a
-        second implementation of the retry loop.
 
-        Unlike Sandbox.resume(), this does not check for a locally known
-        failed status first: there is no handle to check, so the server is
-        always asked, and a failed sandbox's rejection comes back as an
-        ordinary RPC error.
-        """
-        if not sandbox_id:
-            raise InvalidRequestError("sandbox_id is required")
-        key = idempotency_key or uuid.uuid4().hex + uuid.uuid4().hex
-        request = _tapi_pb2.TApiResumeSandboxRequest(
-            api_key=self._client._api_key,
-            sandbox_id=sandbox_id,
-            idempotency_key=key,
-        )
-        deadline = Deadline.start(self._client._timeout)
-        attempts = 0
-        backoff = 0.05
-        while True:
-            try:
-                response = self._client._tapi_stub().ResumeSandbox(request, timeout=deadline.remaining())
-                result = ResumeResult(
-                    sandbox_id=getattr(response, "sandbox_id", sandbox_id) or sandbox_id,
-                    lifecycle_operation_id=getattr(response, "lifecycle_operation_id", ""),
-                    already_running=bool(getattr(response, "already_running", False)),
-                )
-                return result, response
-            except BaseException as exc:
-                if not is_retryable_transport_error(exc) or attempts >= self._client._max_retries:
-                    raise map_rpc_error(
-                        exc,
-                        secrets=self._client._secrets(),
-                        sandbox_id=sandbox_id,
-                        idempotency_key=key,
-                    ) from exc
-                attempts += 1
-                sleep_with_deadline(backoff, deadline)
-                backoff = min(backoff * 2, 0.5)
+def _template_from_proto(template: Any) -> Template:
+    metadata = TemplateMetadata(
+        description=template.metadata.description,
+        os=template.metadata.os,
+        os_version=template.metadata.os_version,
+        stacks=tuple(TemplateStack(name=s.name, version=s.version) for s in template.metadata.stacks),
+        agent_cli_support=tuple(template.metadata.agent_cli_support),
+    )
+    return Template(
+        id=template.template_id,
+        version=template.version,
+        digest=template.digest,
+        is_default=template.is_default,
+        metadata=metadata,
+    )
 
-    def _list_pages(
-        self, *, state_values: builtins.list[int], limit: int | None, name: str = ""
-    ) -> Iterator[SandboxSummary]:
-        yielded = 0
-        page_token = ""
-        while True:
-            page_size = 0 if limit is None else min(100, limit - yielded)
-            request = _tapi_pb2.TApiListSandboxesRequest(
-                api_key=self._client._api_key,
-                states=state_values,
-                page_size=page_size,
-                page_token=page_token,
-                name=name,
-            )
-            deadline = Deadline.start(self._client._timeout)
-            attempts = 0
-            backoff = 0.05
-            while True:
-                try:
-                    response = self._client._tapi_stub().ListSandboxes(request, timeout=deadline.remaining())
-                    break
-                except BaseException as exc:
-                    if not is_retryable_transport_error(exc) or attempts >= self._client._max_retries:
-                        raise map_rpc_error(
-                            exc,
-                            secrets=self._client._secrets(page_token),
-                        ) from exc
-                    attempts += 1
-                    sleep_with_deadline(backoff, deadline)
-                    backoff = min(backoff * 2, 0.5)
-            for sandbox in getattr(response, "sandboxes", []):
-                if limit is not None and yielded >= limit:
-                    return
-                yield _summary_from_metadata(sandbox)
-                yielded += 1
-            page_token = getattr(response, "next_page_token", "")
-            if not page_token or (limit is not None and yielded >= limit):
-                return
+
+def _generate_idempotency_key() -> str:
+    return uuid.uuid4().hex + uuid.uuid4().hex
 
 
 def _resolve_organization_id(organization_id: str | None) -> str | None:

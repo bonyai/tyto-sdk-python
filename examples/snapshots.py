@@ -17,9 +17,9 @@ def main() -> None:
         # No `with` on the sandbox here: snapshot identities outlive their
         # source, so this one is deleted explicitly at the end to show the
         # ordering is a choice rather than a requirement.
-        sandbox = client.create_sandbox(template="ubuntu-24.04", name="snapshot-source")
+        sandbox = client.create_sandbox(template="bonya-dev", name="snapshot-source")
         try:
-            sandbox.files.write("/workspace/state.txt", "captured\n")
+            sandbox.write_file("/workspace/state.txt", "captured\n")
 
             # Snapshot create requires a running source. Suspended, failed, and
             # deleted sandboxes each raise their own error rather than a

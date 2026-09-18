@@ -38,7 +38,7 @@ from tyto import (
     Tyto,
     Wait,
 )
-from tyto._proto.tyto.runtime.v1 import guest_pb2, host_pb2_grpc, preview_pb2, tapi_pb2, tapi_pb2_grpc
+from tyto._proto.tyto.runtime.v1 import guest_pb2, preview_pb2, tapi_pb2, tapi_pb2_grpc
 
 
 class RpcFailure(grpc.RpcError):
@@ -71,7 +71,7 @@ def make_metadata(
     return tapi_pb2.TApiSandboxMetadata(
         sandbox_id=sandbox_id,
         operation_id=operation_id or "op-" + sandbox_id,
-        resolved_template_id="ubuntu-24.04",
+        resolved_template_id="bonya-dev",
         resolved_template_version="dev",
         observed=tapi_pb2.TerminalStatus(
             state=status_to_terminal_state(status),
@@ -168,6 +168,33 @@ class FakeTapi:
         # leaves the name blank.
         self.generated_name = "brave-cedar-6268"
 
+        self.run_job_errors: queue.Queue[BaseException] = queue.Queue()
+        self.start_job_errors: queue.Queue[BaseException] = queue.Queue()
+        self.get_job_run_errors: queue.Queue[BaseException] = queue.Queue()
+        self.list_job_runs_errors: queue.Queue[BaseException] = queue.Queue()
+        self.cancel_job_run_errors: queue.Queue[BaseException] = queue.Queue()
+        self.create_job_schedule_errors: queue.Queue[BaseException] = queue.Queue()
+        self.get_job_schedule_errors: queue.Queue[BaseException] = queue.Queue()
+        self.list_job_schedules_errors: queue.Queue[BaseException] = queue.Queue()
+        self.update_job_schedule_errors: queue.Queue[BaseException] = queue.Queue()
+        self.set_job_schedule_paused_errors: queue.Queue[BaseException] = queue.Queue()
+        self.trigger_job_schedule_errors: queue.Queue[BaseException] = queue.Queue()
+        self.delete_job_schedule_errors: queue.Queue[BaseException] = queue.Queue()
+        self.list_templates_errors: queue.Queue[BaseException] = queue.Queue()
+        self.run_job_requests: list[tapi_pb2.TApiRunJobRequest] = []
+        self.start_job_requests: list[tapi_pb2.TApiStartJobRequest] = []
+        self.get_job_run_requests: list[tapi_pb2.TApiGetJobRunRequest] = []
+        self.cancel_job_run_requests: list[tapi_pb2.TApiCancelJobRunRequest] = []
+        self.create_job_schedule_requests: list[tapi_pb2.TApiCreateJobScheduleRequest] = []
+        self.update_job_schedule_requests: list[tapi_pb2.TApiUpdateJobScheduleRequest] = []
+        # Overridable canned responses; None means a small default is synthesized.
+        self.job_run: tapi_pb2.TApiJobRun | None = None
+        self.job_run_detail: tapi_pb2.TApiJobRunDetail | None = None
+        self.job_runs: list[tapi_pb2.TApiJobRun] | None = None
+        self.job_schedule: tapi_pb2.TApiJobSchedule | None = None
+        self.job_schedules: list[tapi_pb2.TApiJobSchedule] | None = None
+        self.templates: list[tapi_pb2.TApiTemplate] | None = None
+
     def Create(self, request, timeout=None):  # type: ignore[no-untyped-def]
         self.create_requests.append(request)
         if not self.create_errors.empty():
@@ -177,7 +204,7 @@ class FakeTapi:
             sandbox_id="sbx-1",
             exec_capability_jws="secret-cap",
             exec_endpoint="https://exec.example.test/edge",
-            resolved_template_id="ubuntu-24.04",
+            resolved_template_id="bonya-dev",
             resolved_template_version="dev",
             name=request.name or self.generated_name,
         )
@@ -355,6 +382,106 @@ class FakeTapi:
             ]
         )
 
+    def RunJob(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        self.run_job_requests.append(request)
+        if not self.run_job_errors.empty():
+            raise self.run_job_errors.get()
+        run = self.job_run or tapi_pb2.TApiJobRun(
+            run_id="run-1",
+            status=tapi_pb2.TAPI_JOB_RUN_STATUS_COMPLETED,
+            result=tapi_pb2.TApiJobResult(exit_code=0),
+        )
+        return tapi_pb2.TApiRunJobResponse(run=run)
+
+    def StartJob(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        self.start_job_requests.append(request)
+        if not self.start_job_errors.empty():
+            raise self.start_job_errors.get()
+        return tapi_pb2.TApiStartJobResponse(run_id="run-1", already_running=False)
+
+    def GetJobRun(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        self.get_job_run_requests.append(request)
+        if not self.get_job_run_errors.empty():
+            raise self.get_job_run_errors.get()
+        detail = self.job_run_detail or tapi_pb2.TApiJobRunDetail(
+            run=tapi_pb2.TApiJobRun(run_id=request.run_id, status=tapi_pb2.TAPI_JOB_RUN_STATUS_COMPLETED)
+        )
+        return tapi_pb2.TApiGetJobRunResponse(detail=detail)
+
+    def ListJobRuns(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.list_job_runs_errors.empty():
+            raise self.list_job_runs_errors.get()
+        runs = self.job_runs
+        if runs is None:
+            runs = [tapi_pb2.TApiJobRun(run_id="run-1", status=tapi_pb2.TAPI_JOB_RUN_STATUS_COMPLETED)]
+        return tapi_pb2.TApiListJobRunsResponse(runs=runs)
+
+    def CancelJobRun(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        self.cancel_job_run_requests.append(request)
+        if not self.cancel_job_run_errors.empty():
+            raise self.cancel_job_run_errors.get()
+        return tapi_pb2.TApiCancelJobRunResponse()
+
+    def CreateJobSchedule(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        self.create_job_schedule_requests.append(request)
+        if not self.create_job_schedule_errors.empty():
+            raise self.create_job_schedule_errors.get()
+        schedule = self.job_schedule or tapi_pb2.TApiJobSchedule(
+            schedule_id="sched-1", schedule=request.schedule, spec=request.spec
+        )
+        return tapi_pb2.TApiCreateJobScheduleResponse(schedule=schedule)
+
+    def GetJobSchedule(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.get_job_schedule_errors.empty():
+            raise self.get_job_schedule_errors.get()
+        schedule = self.job_schedule or tapi_pb2.TApiJobSchedule(schedule_id=request.schedule_id)
+        return tapi_pb2.TApiGetJobScheduleResponse(schedule=schedule)
+
+    def ListJobSchedules(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.list_job_schedules_errors.empty():
+            raise self.list_job_schedules_errors.get()
+        schedules = self.job_schedules
+        if schedules is None:
+            schedules = [tapi_pb2.TApiJobSchedule(schedule_id="sched-1")]
+        return tapi_pb2.TApiListJobSchedulesResponse(schedules=schedules)
+
+    def UpdateJobSchedule(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        self.update_job_schedule_requests.append(request)
+        if not self.update_job_schedule_errors.empty():
+            raise self.update_job_schedule_errors.get()
+        return tapi_pb2.TApiUpdateJobScheduleResponse(
+            schedule=tapi_pb2.TApiJobSchedule(
+                schedule_id=request.schedule_id, schedule=request.schedule, spec=request.spec
+            )
+        )
+
+    def SetJobSchedulePaused(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.set_job_schedule_paused_errors.empty():
+            raise self.set_job_schedule_paused_errors.get()
+        return tapi_pb2.TApiSetJobSchedulePausedResponse(
+            schedule=tapi_pb2.TApiJobSchedule(
+                schedule_id=request.schedule_id, paused=request.paused, note=request.note
+            )
+        )
+
+    def TriggerJobSchedule(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.trigger_job_schedule_errors.empty():
+            raise self.trigger_job_schedule_errors.get()
+        return tapi_pb2.TApiTriggerJobScheduleResponse()
+
+    def DeleteJobSchedule(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.delete_job_schedule_errors.empty():
+            raise self.delete_job_schedule_errors.get()
+        return tapi_pb2.TApiDeleteJobScheduleResponse()
+
+    def ListTemplates(self, request, timeout=None):  # type: ignore[no-untyped-def]
+        if not self.list_templates_errors.empty():
+            raise self.list_templates_errors.get()
+        templates = self.templates
+        if templates is None:
+            templates = [tapi_pb2.TApiTemplate(template_id="bonya-dev", version="1", digest="sha256:default", is_default=True)]
+        return tapi_pb2.TApiListTemplatesResponse(templates=templates)
+
 
 class FakeStream:
     def __init__(self, requests: Iterator[guest_pb2.ExecRequest], responses: list[guest_pb2.ExecResponse]) -> None:
@@ -523,7 +650,7 @@ def test_configuration_precedence_and_endpoint_validation(monkeypatch: pytest.Mo
     monkeypatch.setenv("BONYA_API_KEY", "env-key")
     monkeypatch.setenv("BONYA_ENDPOINT", "https://env.example.test")
     client = Tyto(_channel_factory=transport.channel_factory, _tapi_stub_factory=transport.tapi_stub)
-    assert client.sandboxes
+    assert client is not None
     with pytest.raises(InvalidRequestError):
         Tyto(api_key="k", endpoint="http://example.test")
     with pytest.raises(InvalidRequestError):
@@ -541,8 +668,8 @@ def test_create_request_mapping_retry_and_channel_pooling(monkeypatch: pytest.Mo
     transport.tapi.create_errors.put(RpcFailure(grpc.StatusCode.UNAVAILABLE, "try again"))
     client = make_client(monkeypatch, transport)
 
-    sandbox = client.sandboxes.create(
-        template="ubuntu-24.04",
+    sandbox = client.create_sandbox(
+        template="bonya-dev",
         version=None,
         wait=Wait.NONE,
         idempotency_key="idem-1",
@@ -555,7 +682,7 @@ def test_create_request_mapping_retry_and_channel_pooling(monkeypatch: pytest.Mo
     request = transport.tapi.create_requests[0]
     assert request.api_key == "secret-api"
     assert request.idempotency_key == "idem-1"
-    assert request.template.template_id == "ubuntu-24.04"
+    assert request.template.template_id == "bonya-dev"
     assert request.template.version == ""
     assert request.template.digest == ""
     assert request.wait == tapi_pb2.CREATE_WAIT_NONE
@@ -573,7 +700,7 @@ def test_create_request_mapping_retry_and_channel_pooling(monkeypatch: pytest.Mo
     client.close()
     assert all(channel.closed for channel in transport.channels)
     with pytest.raises(InvalidRequestError):
-        client.sandboxes.create(template="ubuntu-24.04")
+        client.create_sandbox(template="bonya-dev")
 
 
 def test_missing_endpoint_is_hard_response_error(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -584,7 +711,7 @@ def test_missing_endpoint_is_hard_response_error(monkeypatch: pytest.MonkeyPatch
     )
     client = make_client(monkeypatch, transport)
     with pytest.raises(InvalidRequestError):
-        client.sandboxes.create(template="ubuntu-24.04", idempotency_key="idem")
+        client.create_sandbox(template="bonya-dev", idempotency_key="idem")
 
 
 def test_get_returns_usable_sandbox_with_metadata_without_resume(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -594,11 +721,11 @@ def test_get_returns_usable_sandbox_with_metadata_without_resume(monkeypatch: py
     transport.tapi.source_statuses["sbx-1"] = Status.SUSPENDED
     client = make_client(monkeypatch, transport)
 
-    sandbox = client.sandboxes.get("sbx-1")
+    sandbox = client.get_sandbox("sbx-1")
 
     assert sandbox.id == "sbx-1"
     assert sandbox.operation_id == "op-sbx-1"
-    assert sandbox.template == "ubuntu-24.04"
+    assert sandbox.template == "bonya-dev"
     assert sandbox.version == "dev"
     assert sandbox.last_observed_status is Status.SUSPENDED
     assert len(transport.tapi.get_requests) == 1
@@ -617,7 +744,7 @@ def test_get_missing_deleted_and_cross_tenant_map_to_not_found(monkeypatch: pyte
 
     for sandbox_id in ["missing", "deleted", "cross-tenant"]:
         with pytest.raises(SandboxNotFoundError):
-            client.sandboxes.get(sandbox_id)
+            client.get_sandbox(sandbox_id)
 
 
 def test_list_is_lazy_paginates_and_honors_total_limit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -639,7 +766,7 @@ def test_list_is_lazy_paginates_and_honors_total_limit(monkeypatch: pytest.Monke
         ),
     ]
 
-    iterator = client.sandboxes.list(limit=3)
+    iterator = client.list_sandboxes(limit=3)
     assert transport.tapi.list_requests == []
 
     summaries = list(iterator)
@@ -648,7 +775,7 @@ def test_list_is_lazy_paginates_and_honors_total_limit(monkeypatch: pytest.Monke
     assert summaries[2] == SandboxSummary(
         id="sbx-1",
         operation_id="op-sbx-1",
-        template="ubuntu-24.04",
+        template="bonya-dev",
         version="dev",
         last_observed_status=Status.FAILED,
         failure_code="create_failed",
@@ -668,15 +795,15 @@ def test_list_limit_zero_and_invalid_filters_fail_before_rpc(monkeypatch: pytest
     transport.tapi = FakeTapi()
     client = make_client(monkeypatch, transport)
 
-    assert list(client.sandboxes.list(limit=0)) == []
+    assert list(client.list_sandboxes(limit=0)) == []
     assert transport.tapi.list_requests == []
 
     with pytest.raises(InvalidRequestError):
-        client.sandboxes.list(states=[Status.DELETED])
+        client.list_sandboxes(states=[Status.DELETED])
     with pytest.raises(InvalidRequestError):
-        client.sandboxes.list(states=["running"])  # type: ignore[list-item]
+        client.list_sandboxes(states=["running"])  # type: ignore[list-item]
     with pytest.raises(InvalidRequestError):
-        client.sandboxes.list(limit=-1)
+        client.list_sandboxes(limit=-1)
     assert transport.tapi.list_requests == []
 
 
@@ -685,7 +812,7 @@ def test_list_state_filters_serialize(monkeypatch: pytest.MonkeyPatch) -> None:
     transport.tapi = FakeTapi()
     client = make_client(monkeypatch, transport)
 
-    list(client.sandboxes.list(states=[Status.RUNNING, Status.FAILED], limit=1))
+    list(client.list_sandboxes(states=[Status.RUNNING, Status.FAILED], limit=1))
 
     request = transport.tapi.list_requests[0]
     assert list(request.states) == [
@@ -701,7 +828,7 @@ def test_failed_get_handle_rejects_exec_locally_but_deletes(monkeypatch: pytest.
     transport.tapi.source_statuses["sbx-1"] = Status.FAILED
     client = make_client(monkeypatch, transport)
 
-    sandbox = client.sandboxes.get("sbx-1")
+    sandbox = client.get_sandbox("sbx-1")
 
     assert sandbox.last_observed_status is Status.FAILED
     with pytest.raises(SandboxFailedError):
@@ -724,7 +851,7 @@ def test_exec_never_retries_and_redacts_capability(monkeypatch: pytest.MonkeyPat
     transport.guest = FakeGuest()
     transport.guest.fail = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(CapabilityRejectedError) as caught:
         sandbox.exec(["false"])
@@ -744,7 +871,7 @@ def test_exec_expired_capability_gets_once_and_retries_without_resume(monkeypatc
         sandbox_id="sbx-1",
         exec_capability_jws=expired_capability,
         exec_endpoint="https://exec.example.test/edge",
-        resolved_template_id="ubuntu-24.04",
+        resolved_template_id="bonya-dev",
         resolved_template_version="dev",
     )
     original_exec = transport.guest.Exec
@@ -757,7 +884,7 @@ def test_exec_expired_capability_gets_once_and_retries_without_resume(monkeypatc
 
     transport.guest.Exec = exec_with_one_expired_rejection  # type: ignore[method-assign]
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     result = sandbox.exec(["cat"], env={"MODE": "development"}, cwd="/workspace", input="replayed\n")
 
@@ -784,7 +911,7 @@ def test_streaming_exec_expired_capability_gets_once_and_retries(monkeypatch: py
         sandbox_id="sbx-1",
         exec_capability_jws=expired_capability,
         exec_endpoint="https://exec.example.test/edge",
-        resolved_template_id="ubuntu-24.04",
+        resolved_template_id="bonya-dev",
         resolved_template_version="dev",
     )
     original_exec = transport.guest.Exec
@@ -797,7 +924,7 @@ def test_streaming_exec_expired_capability_gets_once_and_retries(monkeypatch: py
 
     transport.guest.Exec = exec_with_one_expired_rejection  # type: ignore[method-assign]
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with sandbox.exec_stream(["printf", "ready"], env={"NODE_ENV": "development"}, cwd="/workspace") as session:
         events = list(session)
@@ -823,7 +950,7 @@ def test_streaming_exec_expired_retry_replays_preread_input(monkeypatch: pytest.
         sandbox_id="sbx-1",
         exec_capability_jws=expired_capability,
         exec_endpoint="https://exec.example.test/edge",
-        resolved_template_id="ubuntu-24.04",
+        resolved_template_id="bonya-dev",
         resolved_template_version="dev",
     )
     original_exec = transport.guest.Exec
@@ -836,7 +963,7 @@ def test_streaming_exec_expired_retry_replays_preread_input(monkeypatch: pytest.
 
     transport.guest.Exec = exec_with_one_expired_rejection  # type: ignore[method-assign]
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with sandbox.exec_stream(["cat"]) as session:
         session.write(b"input\n")
@@ -859,7 +986,7 @@ def test_exec_suspended_failure_updates_local_status(monkeypatch: pytest.MonkeyP
     transport.guest.fail = True
     transport.guest.failure = RpcFailure(grpc.StatusCode.FAILED_PRECONDITION, "sandbox_suspended")
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(SandboxSuspendedError):
         sandbox.exec(["printf", "x"])
@@ -886,7 +1013,7 @@ def test_delete_idempotence_and_context_cleanup(monkeypatch: pytest.MonkeyPatch)
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     first = sandbox.delete()
     second = sandbox.delete()
     assert first.already_deleted is False
@@ -896,7 +1023,7 @@ def test_delete_idempotence_and_context_cleanup(monkeypatch: pytest.MonkeyPatch)
     with pytest.raises(SandboxDeletedError):
         sandbox.exec(["printf", "x"])
 
-    sandbox2 = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox2 = client.create_sandbox(template="bonya-dev")
     transport.tapi.delete_errors.put(RpcFailure(grpc.StatusCode.NOT_FOUND, "missing"))
     with pytest.raises(SandboxNotFoundError):
         with sandbox2:
@@ -910,12 +1037,12 @@ def test_snapshot_create_derives_by_source_and_key(monkeypatch: pytest.MonkeyPat
     transport.tapi.source_tenants["sbx-2"] = "tenant-a"
     transport.tapi.source_statuses["sbx-2"] = Status.RUNNING
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     other_source = Sandbox(
         client=client,
         sandbox_id="sbx-2",
         operation_id="op-2",
-        template="ubuntu-24.04",
+        template="bonya-dev",
         version="dev",
         status=Status.RUNNING,
         exec_endpoint="https://exec.example.test/edge",
@@ -944,7 +1071,7 @@ def test_snapshot_retry_reuses_idempotency_key_and_snapshot_id(monkeypatch: pyte
     transport.guest = FakeGuest()
     transport.tapi.snapshot_create_errors.put(RpcFailure(grpc.StatusCode.UNAVAILABLE, "try again"))
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     snapshot = sandbox.snapshot(idempotency_key="stable-key")
 
@@ -970,7 +1097,7 @@ def test_snapshot_create_requires_owning_running_source(monkeypatch: pytest.Monk
     transport.tapi.source_statuses["suspended-source"] = Status.SUSPENDED
     client = make_client(monkeypatch, transport)
 
-    running = client.sandboxes.create(template="ubuntu-24.04")
+    running = client.create_sandbox(template="bonya-dev")
     assert running.snapshot(idempotency_key="ok").source_sandbox_id == "sbx-1"
 
     for sandbox_id, status, error_cls in [
@@ -982,7 +1109,7 @@ def test_snapshot_create_requires_owning_running_source(monkeypatch: pytest.Monk
             client=client,
             sandbox_id=sandbox_id,
             operation_id="op-" + sandbox_id,
-            template="ubuntu-24.04",
+            template="bonya-dev",
             version="dev",
             status=status,
             exec_endpoint="https://exec.example.test/edge",
@@ -997,7 +1124,7 @@ def test_snapshot_delete_after_source_delete_and_repeated_delete(monkeypatch: py
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     snapshot = sandbox.snapshot(idempotency_key="keep-after-source-delete")
 
     sandbox.delete()
@@ -1040,7 +1167,7 @@ def test_snapshot_errors_are_stable_and_redacted(monkeypatch: pytest.MonkeyPatch
         )
     )
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(TimeoutError) as create_caught:
         sandbox.snapshot(idempotency_key="stable-key")
@@ -1068,18 +1195,20 @@ def test_snapshot_errors_are_stable_and_redacted(monkeypatch: pytest.MonkeyPatch
 
 
 def test_public_suspend_is_not_exposed_by_sdk_or_tapi_proto(monkeypatch: pytest.MonkeyPatch) -> None:
+    # SuspendSandbox is a server-internal operation (previously HostService,
+    # no longer exported to SDK consumers by the BSR schema at all) -- this
+    # only asserts the client-facing surface never exposes it.
     transport = FakeTransport()
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     assert not hasattr(sandbox, "suspend")
     assert not hasattr(tapi_pb2, "TApiSuspendSandboxRequest")
     assert not hasattr(tapi_pb2, "TApiSuspendSandboxResponse")
     assert "SuspendSandbox" not in tapi_pb2.DESCRIPTOR.services_by_name["TApiService"].methods_by_name
     assert not hasattr(tapi_pb2_grpc.TApiService, "SuspendSandbox")
-    assert hasattr(host_pb2_grpc.HostService, "SuspendSandbox")
 
 
 def test_resume_replaces_private_capability_and_sets_status(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1087,7 +1216,7 @@ def test_resume_replaces_private_capability_and_sets_status(monkeypatch: pytest.
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     old_capability = sandbox._capability
 
     result = sandbox.resume(idempotency_key="resume-key")
@@ -1109,7 +1238,7 @@ def test_resume_preserves_idempotency_key_and_status_on_ambiguous_error(monkeypa
     transport.tapi.resume_errors.put(RpcFailure(grpc.StatusCode.UNAVAILABLE, "still down secret-api"))
     client = make_client(monkeypatch, transport)
     client._max_retries = 1
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     sandbox.last_observed_status = Status.SUSPENDED
 
     with pytest.raises(ConnectionError) as caught:
@@ -1127,7 +1256,7 @@ def test_dual_failure_chains_cleanup_error(monkeypatch: pytest.MonkeyPatch) -> N
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     transport.tapi.delete_errors.put(RpcFailure(grpc.StatusCode.NOT_FOUND, "missing"))
 
     with pytest.raises(RuntimeError) as caught:
@@ -1142,7 +1271,7 @@ def test_streaming_stdin_half_close_and_events(monkeypatch: pytest.MonkeyPatch) 
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with sandbox.exec_stream(["cat"]) as session:
         session.write(b"input\n")
@@ -1160,7 +1289,7 @@ def test_buffered_exec_env_and_cwd_start_serialization(monkeypatch: pytest.Monke
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     env = {"MODE": "development"}
     result = sandbox.exec(["python3", "worker.py"], env=env, cwd="/workspace")
@@ -1181,7 +1310,7 @@ def test_streaming_exec_env_and_cwd_start_serialization(monkeypatch: pytest.Monk
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["npm", "run", "dev"], env={"NODE_ENV": "development"}, cwd="/workspace")
 
@@ -1218,7 +1347,7 @@ def test_exec_env_and_cwd_invalid_inputs_fail_before_rpc(
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     transport.guest.calls = 0
 
     with pytest.raises(InvalidRequestError):
@@ -1235,7 +1364,7 @@ def test_exec_buffered_string_input_writes_stdin_and_returns_result(monkeypatch:
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     result = sandbox.exec(["cat"], input="snowman: \u2603\n")
 
@@ -1254,7 +1383,7 @@ def test_exec_buffered_binary_and_empty_input_write_stdin(
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     sandbox.exec(["cat"], input=buffered_input)
 
@@ -1271,7 +1400,7 @@ def test_exec_buffered_input_invalid_inputs_fail_before_rpc(
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     transport.guest.calls = 0
 
     with pytest.raises(InvalidRequestError):
@@ -1285,7 +1414,7 @@ def test_exec_buffered_input_with_tty_fails_before_rpc(monkeypatch: pytest.Monke
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     transport.guest.calls = 0
 
     with pytest.raises(InvalidRequestError):
@@ -1300,7 +1429,7 @@ def test_tty_start_serialization_and_validation(monkeypatch: pytest.MonkeyPatch)
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["sh"], tty=True)
     assert transport.guest.lazy_stream is not None
@@ -1341,7 +1470,7 @@ def test_tty_buffered_result_uses_stdout_only(monkeypatch: pytest.MonkeyPatch) -
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     transport.guest.Exec = lambda requests, timeout=None, metadata=None: FakeStream(  # type: ignore[method-assign]
         requests,
         [
@@ -1362,7 +1491,7 @@ def test_tty_resize_serialization_and_invalid_state(monkeypatch: pytest.MonkeyPa
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["sh"], tty=True)
     session.resize(cols=100, rows=30)
@@ -1401,7 +1530,7 @@ def test_tty_resize_after_close_stdin_is_rejected(monkeypatch: pytest.MonkeyPatc
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["sh"], tty=True)
     session.close_stdin()
@@ -1478,7 +1607,7 @@ def test_error_builtin_compatibility_and_retry_allowlist(monkeypatch: pytest.Mon
     transport.tapi.create_errors.put(RpcFailure(grpc.StatusCode.UNAUTHENTICATED, "bad secret-api"))
     client = make_client(monkeypatch, transport)
     with pytest.raises(Exception) as caught:
-        client.sandboxes.create(template="ubuntu-24.04", idempotency_key="idem")
+        client.create_sandbox(template="bonya-dev", idempotency_key="idem")
     assert len(transport.tapi.create_requests) == 1
     assert "secret-api" not in str(caught.value)
 
@@ -1498,7 +1627,7 @@ def test_create_local_deadline_exhaustion_uses_creation_timeout(monkeypatch: pyt
     )
 
     with pytest.raises(SandboxCreationTimeoutError) as caught:
-        client.sandboxes.create(template="ubuntu-24.04", idempotency_key="idem-timeout")
+        client.create_sandbox(template="bonya-dev", idempotency_key="idem-timeout")
 
     assert caught.value.idempotency_key == "idem-timeout"
 
@@ -1509,7 +1638,7 @@ def test_close_after_half_close_sends_cancel_before_ending_requests(monkeypatch:
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["cat"])
     session.close_stdin()
@@ -1525,7 +1654,7 @@ def test_close_after_consumed_half_close_cancels_rpc(monkeypatch: pytest.MonkeyP
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["cat"])
     session.close_stdin()
@@ -1544,7 +1673,7 @@ def test_explicit_cancel_is_idempotent_and_sends_cancel(monkeypatch: pytest.Monk
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["sleep", "60"])
     session.cancel()
@@ -1560,7 +1689,7 @@ def test_write_backpressure_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
     transport.guest = FakeGuest()
     transport.guest.lazy = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["cat"], timeout=0.01)
     with pytest.raises(TimeoutError):
@@ -1575,7 +1704,7 @@ def test_close_unblocks_reader_when_response_queue_is_full(monkeypatch: pytest.M
     transport.guest = FakeGuest()
     transport.guest.flood = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     session = sandbox.exec_stream(["yes"])
     next(session)
@@ -1592,7 +1721,7 @@ def test_buffered_timeout_sends_cancel_before_request_stream_ends(monkeypatch: p
     transport.guest = FakeGuest()
     transport.guest.hang = True
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(TimeoutError):
         sandbox.exec(["sleep", "60"], timeout=0.01)

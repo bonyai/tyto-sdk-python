@@ -143,12 +143,12 @@ def make_files_client(monkeypatch: pytest.MonkeyPatch, guest: FakeFilesystemGues
 def test_files_public_surface_binary_empty_utf8_and_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeFilesystemGuest()
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    assert sandbox.files.read("/tmp/blob") == b"bin\x00\xff"
-    sandbox.files.write("/tmp/empty", b"")
-    sandbox.files.write("/tmp/text", "snowman: \u2603")
-    info = sandbox.files.stat("/tmp/blob")
+    assert sandbox.read_file("/tmp/blob") == b"bin\x00\xff"
+    sandbox.write_file("/tmp/empty", b"")
+    sandbox.write_file("/tmp/text", "snowman: \u2603")
+    info = sandbox.stat_file("/tmp/blob")
 
     assert guest.read_requests[0].path == "/tmp/blob"
     assert [frame.WhichOneof("frame") for frame in guest.write_requests[0]] == ["start"]
@@ -162,11 +162,11 @@ def test_files_public_surface_binary_empty_utf8_and_metadata(monkeypatch: pytest
 def test_upload_uses_64k_chunks_and_download_replaces_atomically(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     guest = FakeFilesystemGuest()
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     source = tmp_path / "source.bin"
     source.write_bytes(b"a" * TRANSFER_CHUNK_BYTES + b"b" * 3)
 
-    sandbox.files.upload(source, "/tmp/source.bin")
+    sandbox.upload_file(source, "/tmp/source.bin")
 
     chunks = [frame.chunk.data for frame in guest.write_requests[0] if frame.WhichOneof("frame") == "chunk"]
     assert [len(chunk) for chunk in chunks] == [TRANSFER_CHUNK_BYTES, 3]
@@ -174,7 +174,7 @@ def test_upload_uses_64k_chunks_and_download_replaces_atomically(monkeypatch: py
     destination = tmp_path / "dest.bin"
     destination.write_bytes(b"old")
     guest.read_chunks = [b"new", b"\x00data"]
-    sandbox.files.download("/tmp/source.bin", destination)
+    sandbox.download_file("/tmp/source.bin", destination)
 
     assert destination.read_bytes() == b"new\x00data"
     assert list(tmp_path.glob(".dest.bin.bonya-download-*.tmp")) == []
@@ -184,12 +184,12 @@ def test_download_pre_replace_error_cleans_temp_and_preserves_destination(monkey
     guest = FakeFilesystemGuest()
     guest.read_errors.put(RpcFailure(grpc.StatusCode.NOT_FOUND, "open file failed: missing"))
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     destination = tmp_path / "dest.bin"
     destination.write_bytes(b"old")
 
     with pytest.raises(RemoteFileNotFoundError):
-        sandbox.files.download("/tmp/missing", destination)
+        sandbox.download_file("/tmp/missing", destination)
 
     assert destination.read_bytes() == b"old"
     assert list(tmp_path.glob(".dest.bin.bonya-download-*.tmp")) == []
@@ -199,7 +199,7 @@ def test_download_tolerates_unsupported_parent_fsync(monkeypatch: pytest.MonkeyP
     guest = FakeFilesystemGuest()
     guest.read_chunks = [b"new"]
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     destination = tmp_path / "dest.bin"
     destination.write_bytes(b"old")
     real_open = os.open
@@ -225,7 +225,7 @@ def test_download_tolerates_unsupported_parent_fsync(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(os, "fsync", fake_fsync)
     monkeypatch.setattr(os, "close", fake_close)
 
-    sandbox.files.download("/tmp/source.bin", destination)
+    sandbox.download_file("/tmp/source.bin", destination)
 
     assert destination.read_bytes() == b"new"
     assert list(tmp_path.glob(".dest.bin.bonya-download-*.tmp")) == []
@@ -238,7 +238,7 @@ def test_download_parent_fsync_real_failure_is_not_swallowed(
     guest = FakeFilesystemGuest()
     guest.read_chunks = [b"new"]
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
     destination = tmp_path / "dest.bin"
     destination.write_bytes(b"old")
     original_open = os.open
@@ -273,7 +273,7 @@ def test_download_parent_fsync_real_failure_is_not_swallowed(
         monkeypatch.setattr(os, "close", fake_close)
 
     with pytest.raises(OSError):
-        sandbox.files.download("/tmp/source.bin", destination)
+        sandbox.download_file("/tmp/source.bin", destination)
 
     assert destination.read_bytes() == b"new"
     assert list(tmp_path.glob(".dest.bin.bonya-download-*.tmp")) == []
@@ -283,10 +283,10 @@ def test_read_cap_cancels_before_unbounded_growth(monkeypatch: pytest.MonkeyPatc
     guest = FakeFilesystemGuest()
     guest.read_chunks = [b"1234", b"5"]
     client, _ = make_files_client(monkeypatch, guest, read_limit=4)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(FilesystemLimitError):
-        sandbox.files.read("/tmp/blob")
+        sandbox.read_file("/tmp/blob")
 
 
 def test_list_returns_complete_sorted_immediate_children(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -297,9 +297,9 @@ def test_list_returns_complete_sorted_immediate_children(monkeypatch: pytest.Mon
         guest_pb2.FileInfo(path="/tmp/c", name="c", kind=guest_pb2.FILE_KIND_OTHER),
     ]
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    files = sandbox.files.list("/tmp")
+    files = sandbox.list_files("/tmp")
 
     assert [file.name for file in files] == ["a", "b", "c"]
     assert [file.kind for file in files] == [FileKind.SYMLINK, FileKind.DIRECTORY, FileKind.OTHER]
@@ -319,26 +319,26 @@ def test_filesystem_error_mapping(monkeypatch: pytest.MonkeyPatch, error: BaseEx
     guest = FakeFilesystemGuest()
     getattr(guest, method + "_errors", guest.move_errors).put(error)
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(error_cls):
         if method == "stat":
-            sandbox.files.stat("/tmp/missing")
+            sandbox.stat_file("/tmp/missing")
         elif method == "move":
-            sandbox.files.move("/tmp/a", "/tmp/b")
+            sandbox.move_file("/tmp/a", "/tmp/b")
         elif method == "read":
-            sandbox.files.read("/tmp/a")
+            sandbox.read_file("/tmp/a")
         else:
-            sandbox.files.mkdir("/tmp/a")
+            sandbox.mkdir_file("/tmp/a")
 
 
 def test_filesystem_capability_rejection_refreshes_unexpired_token_once(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeFilesystemGuest()
     guest.stat_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "filesystem capability rejected"))
     client, transport = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    info = sandbox.files.stat("/tmp/blob")
+    info = sandbox.stat_file("/tmp/blob")
 
     assert info.name == "blob"
     assert len(transport.tapi.get_requests) == 1
@@ -350,9 +350,9 @@ def test_filesystem_sandbox_binding_rejection_refreshes_unexpired_token_once(mon
     guest = FakeFilesystemGuest()
     guest.stat_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "filesystem capability sandbox binding rejected"))
     client, transport = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    info = sandbox.files.stat("/tmp/blob")
+    info = sandbox.stat_file("/tmp/blob")
 
     assert info.name == "blob"
     assert len(transport.tapi.get_requests) == 1
@@ -364,10 +364,10 @@ def test_remote_file_permission_denied_does_not_refresh(monkeypatch: pytest.Monk
     guest = FakeFilesystemGuest()
     guest.stat_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "stat file failed: permission denied"))
     client, transport = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(FilesystemError):
-        sandbox.files.stat("/root/secret")
+        sandbox.stat_file("/root/secret")
 
     assert len(transport.tapi.get_requests) == 0
     assert len(guest.stat_requests) == 1
@@ -378,10 +378,10 @@ def test_filesystem_capability_rejection_retries_only_once(monkeypatch: pytest.M
     guest.stat_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "filesystem capability rejected"))
     guest.stat_errors.put(RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "filesystem capability rejected"))
     client, transport = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(CapabilityRejectedError):
-        sandbox.files.stat("/tmp/blob")
+        sandbox.stat_file("/tmp/blob")
 
     assert len(transport.tapi.get_requests) == 1
     assert len(guest.stat_requests) == 2
@@ -391,10 +391,10 @@ def test_mutating_filesystem_unavailable_is_not_retried(monkeypatch: pytest.Monk
     guest = FakeFilesystemGuest()
     guest.move_errors.put(RpcFailure(grpc.StatusCode.UNAVAILABLE, "uncertain outcome"))
     client, transport = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(FilesystemError):
-        sandbox.files.move("/tmp/a", "/tmp/b")
+        sandbox.move_file("/tmp/a", "/tmp/b")
 
     assert len(guest.move_requests) == 1
     assert len(transport.tapi.get_requests) == 0
@@ -403,11 +403,11 @@ def test_mutating_filesystem_unavailable_is_not_retried(monkeypatch: pytest.Monk
 def test_filesystem_namespace_operations_serialize(monkeypatch: pytest.MonkeyPatch) -> None:
     guest = FakeFilesystemGuest()
     client, _ = make_files_client(monkeypatch, guest)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
-    sandbox.files.mkdir("/tmp/a")
-    sandbox.files.remove("/tmp/a", recursive=True)
-    sandbox.files.move("/tmp/a", "/tmp/b")
+    sandbox.mkdir_file("/tmp/a")
+    sandbox.remove_file("/tmp/a", recursive=True)
+    sandbox.move_file("/tmp/a", "/tmp/b")
 
     assert guest.mkdir_requests[0].path == "/tmp/a"
     assert guest.remove_requests[0].recursive is True
@@ -427,13 +427,13 @@ def test_exec_surface_still_refreshes_only_expired_capability(monkeypatch: pytes
         sandbox_id="sbx-1",
         exec_capability_jws=unexpired,
         exec_endpoint="https://exec.example.test/edge",
-        resolved_template_id="ubuntu-24.04",
+        resolved_template_id="bonya-dev",
         resolved_template_version="dev",
     )
     transport.guest.fail = True
     transport.guest.failure = RpcFailure(grpc.StatusCode.PERMISSION_DENIED, "exec capability rejected")
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(template="ubuntu-24.04")
+    sandbox = client.create_sandbox(template="bonya-dev")
 
     with pytest.raises(CapabilityRejectedError):
         sandbox.exec(["printf", "x"])

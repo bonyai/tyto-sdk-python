@@ -39,8 +39,8 @@ proto:
 		--proto_path=$(PROTO_DIR) \
 		--python_out=src/tyto/_proto \
 		--grpc_python_out=src/tyto/_proto \
+		$(PROTO_DIR)/tyto/runtime/v1/common.proto \
 		$(PROTO_DIR)/tyto/runtime/v1/guest.proto \
-		$(PROTO_DIR)/tyto/runtime/v1/host.proto \
 		$(PROTO_DIR)/tyto/runtime/v1/preview.proto \
 		$(PROTO_DIR)/tyto/runtime/v1/tapi.proto
 	$(PYTHON) scripts/rewrite-python-proto-imports.py src/tyto/_proto

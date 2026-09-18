@@ -1,6 +1,6 @@
 """Synchronous Tyto Compute SDK."""
 
-from ._client import Bonya, Organization, OrganizationContextNotEnforcedWarning, SandboxSummary, Tyto
+from ._client import Bonya, Organization, OrganizationContextNotEnforcedWarning, SandboxSummary, Template, TemplateMetadata, TemplateStack, Tyto
 from ._errors import (
     AuthenticationError,
     BonyaError,
@@ -11,6 +11,8 @@ from ._errors import (
     FilesystemError,
     FilesystemLimitError,
     InvalidRequestError,
+    JobRunNotFoundError,
+    JobScheduleNotFoundError,
     RemoteFileExistsError,
     RemoteFileNotFoundError,
     SandboxBusyError,
@@ -27,12 +29,28 @@ from ._errors import (
     TimeoutError,
     TytoError,
 )
-from ._files import FileInfo, FileKind, SandboxFiles
-from ._previews import Preview, PreviewAuth, SandboxPreviews
+from ._files import FileInfo, FileKind
+from ._jobs import (
+    Disposition,
+    JobResult,
+    JobRun,
+    JobRunAction,
+    JobRunDetail,
+    JobRunStatus,
+    JobRunTimelineEntry,
+    JobRunTimelineStatus,
+    JobSandboxSpec,
+    JobSchedule,
+    JobScriptSpec,
+    JobSpec,
+    ScheduleAction,
+    ScheduleOverlap,
+    ScheduleSpec,
+)
+from ._previews import Preview, PreviewAuth
 from ._sandbox import DeleteResult, ExecResult, ResumeResult, Sandbox, Snapshot
 from ._session import ExecSession
 from ._sessions import (
-    SandboxSessions,
     SessionEnded,
     SessionEndedReason,
     SessionInfo,
@@ -51,6 +69,7 @@ __all__ = [
     "ConnectionError",
     "CrossFilesystemMoveError",
     "DeleteResult",
+    "Disposition",
     "ExecFailedError",
     "ExecResult",
     "ExecSession",
@@ -60,6 +79,19 @@ __all__ = [
     "FilesystemError",
     "FilesystemLimitError",
     "InvalidRequestError",
+    "JobResult",
+    "JobRun",
+    "JobRunAction",
+    "JobRunDetail",
+    "JobRunNotFoundError",
+    "JobRunStatus",
+    "JobRunTimelineEntry",
+    "JobRunTimelineStatus",
+    "JobSandboxSpec",
+    "JobSchedule",
+    "JobScheduleNotFoundError",
+    "JobScriptSpec",
+    "JobSpec",
     "Organization",
     "OrganizationContextNotEnforcedWarning",
     "RemoteFileExistsError",
@@ -73,11 +105,11 @@ __all__ = [
     "SandboxNotFoundError",
     "Preview",
     "PreviewAuth",
-    "SandboxPreviews",
-    "SandboxSessions",
+    "ScheduleAction",
+    "ScheduleOverlap",
+    "ScheduleSpec",
     "SandboxSuspendedError",
     "SandboxSummary",
-    "SandboxFiles",
     "ServiceError",
     "SessionEnded",
     "SessionEndedReason",
@@ -93,6 +125,9 @@ __all__ = [
     "Status",
     "Stderr",
     "Stdout",
+    "Template",
+    "TemplateMetadata",
+    "TemplateStack",
     "ResumeResult",
     "TimeoutError",
     "Tyto",

@@ -68,14 +68,14 @@ def make_org_client(
 
 def drive_every_tapi_rpc(client: Tyto) -> None:
     """Exercise every TApi RPC the SDK knows how to make."""
-    sandbox = client.sandboxes.create(
-        template="ubuntu-24.04", wait=Wait.NONE, idempotency_key="idem-1"
+    sandbox = client.create_sandbox(
+        template="bonya-dev", wait=Wait.NONE, idempotency_key="idem-1"
     )
-    client.sandboxes.get("sbx-1")
-    list(client.sandboxes.list())
-    sandbox.previews.create(3000, name="web")
-    list(sandbox.previews.list())
-    sandbox.previews.delete("pv-aaaaaaaaaaaaaaaaaaaaaaaaaa")
+    client.get_sandbox("sbx-1")
+    list(client.list_sandboxes())
+    sandbox.create_preview(3000, name="web")
+    list(sandbox.list_previews())
+    sandbox.delete_preview("pv-aaaaaaaaaaaaaaaaaaaaaaaaaa")
     snapshot = sandbox.snapshot(idempotency_key="idem-snap")
     snapshot.delete()
     sandbox.reissue_capability()
@@ -143,7 +143,7 @@ def test_organization_context_never_reaches_guest_rpcs(monkeypatch: pytest.Monke
     transport.tapi = RecordingTapi()
     transport.guest = FakeGuest()
     client = make_org_client(monkeypatch, transport, "org-2222")
-    sandbox = client.sandboxes.create(template="ubuntu-24.04", wait=Wait.NONE)
+    sandbox = client.create_sandbox(template="bonya-dev", wait=Wait.NONE)
 
     sandbox.exec(["true"])
     keys = [key for key, _ in transport.guest.metadata]
@@ -169,7 +169,7 @@ def test_organization_id_falls_back_to_the_environment(monkeypatch: pytest.Monke
         _tapi_stub_factory=transport.tapi_stub,
     )
     assert client.organization_id == "org-from-env"
-    client.sandboxes.get("sbx-1")
+    client.get_sandbox("sbx-1")
     assert (ORGANIZATION_METADATA_KEY, "org-from-env") in tuple(
         transport.tapi.metadata_by_method["GetSandbox"]
     )
@@ -231,7 +231,7 @@ def test_organization_context_survives_a_retried_rpc(monkeypatch: pytest.MonkeyP
     client = make_org_client(monkeypatch, transport, "org-3333")
     transport.tapi.get_errors.put(RpcFailure(grpc.StatusCode.UNAVAILABLE, "try again"))
 
-    client.sandboxes.get("sbx-1")
+    client.get_sandbox("sbx-1")
 
     assert (ORGANIZATION_METADATA_KEY, "org-3333") in tuple(
         transport.tapi.metadata_by_method["GetSandbox"]
@@ -248,7 +248,7 @@ def test_organization_id_setter_affects_the_next_call(monkeypatch: pytest.Monkey
     transport.tapi = RecordingTapi()
     client = make_org_client(monkeypatch, transport, "org-before")
 
-    client.sandboxes.get("sbx-1")
+    client.get_sandbox("sbx-1")
     assert (ORGANIZATION_METADATA_KEY, "org-before") in tuple(
         transport.tapi.metadata_by_method["GetSandbox"]
     )
@@ -256,7 +256,7 @@ def test_organization_id_setter_affects_the_next_call(monkeypatch: pytest.Monkey
     client.organization_id = "org-after"
     assert client.organization_id == "org-after"
 
-    client.sandboxes.get("sbx-1")
+    client.get_sandbox("sbx-1")
     assert (ORGANIZATION_METADATA_KEY, "org-after") in tuple(
         transport.tapi.metadata_by_method["GetSandbox"]
     )

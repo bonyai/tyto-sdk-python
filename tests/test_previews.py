@@ -14,8 +14,8 @@ def _sandbox(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
     transport.tapi = FakeTapi()
     transport.guest = FakeGuest()
     client = make_client(monkeypatch, transport)
-    sandbox = client.sandboxes.create(
-        template="ubuntu-24.04",
+    sandbox = client.create_sandbox(
+        template="bonya-dev",
         version=None,
         wait=Wait.NONE,
         idempotency_key="idem-1",
@@ -26,7 +26,7 @@ def _sandbox(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
 def test_create_returns_the_published_preview(monkeypatch: pytest.MonkeyPatch) -> None:
     sandbox, transport = _sandbox(monkeypatch)
 
-    preview = sandbox.previews.create(3000, name="web")
+    preview = sandbox.create_preview(3000, name="web")
 
     assert preview.id == transport.tapi.next_preview_id
     assert preview.sandbox_id == sandbox.id
@@ -55,7 +55,7 @@ def test_create_replaces_the_stored_capability(monkeypatch: pytest.MonkeyPatch) 
     before = sandbox._capability
     transport.tapi.preview_capability_value = "cap-with-preview-scope"
 
-    sandbox.previews.create(3000)
+    sandbox.create_preview(3000)
 
     assert before != "cap-with-preview-scope"
     assert sandbox._capability == "cap-with-preview-scope"
@@ -64,7 +64,7 @@ def test_create_replaces_the_stored_capability(monkeypatch: pytest.MonkeyPatch) 
 def test_create_forwards_public_mode_explicitly(monkeypatch: pytest.MonkeyPatch) -> None:
     sandbox, transport = _sandbox(monkeypatch)
 
-    preview = sandbox.previews.create(8080, auth=PreviewAuth.PUBLIC)
+    preview = sandbox.create_preview(8080, auth=PreviewAuth.PUBLIC)
 
     assert preview.auth is PreviewAuth.PUBLIC
     assert transport.tapi.preview_create_requests[-1].auth_mode == preview_pb2.PREVIEW_AUTH_MODE_PUBLIC
@@ -86,20 +86,20 @@ def test_create_validates_before_calling_the_server(
     sandbox, transport = _sandbox(monkeypatch)
 
     with pytest.raises(InvalidRequestError):
-        sandbox.previews.create(**kwargs)  # type: ignore[arg-type]
+        sandbox.create_preview(**kwargs)  # type: ignore[arg-type]
     assert transport.tapi.preview_create_requests == []
 
 
 def test_list_and_delete_round_trip(monkeypatch: pytest.MonkeyPatch) -> None:
     sandbox, transport = _sandbox(monkeypatch)
-    created = sandbox.previews.create(3000, name="web")
+    created = sandbox.create_preview(3000, name="web")
 
-    listed = sandbox.previews.list()
+    listed = sandbox.list_previews()
     assert [preview.id for preview in listed] == [created.id]
     assert listed[0].url == created.url
 
-    sandbox.previews.delete(created.id)
-    assert sandbox.previews.list() == []
+    sandbox.delete_preview(created.id)
+    assert sandbox.list_previews() == []
     assert transport.tapi.preview_delete_requests[-1].preview_id == created.id
 
 
@@ -107,16 +107,16 @@ def test_delete_requires_a_preview_id(monkeypatch: pytest.MonkeyPatch) -> None:
     sandbox, transport = _sandbox(monkeypatch)
 
     with pytest.raises(InvalidRequestError):
-        sandbox.previews.delete("")
+        sandbox.delete_preview("")
     assert transport.tapi.preview_delete_requests == []
 
 
 def test_browser_url_carries_the_current_capability(monkeypatch: pytest.MonkeyPatch) -> None:
     sandbox, transport = _sandbox(monkeypatch)
     transport.tapi.preview_capability_value = "cap-abc"
-    preview = sandbox.previews.create(3000)
+    preview = sandbox.create_preview(3000)
 
-    url = sandbox.previews.browser_url(preview)
+    url = sandbox.preview_browser_url(preview)
 
     assert url == f"{preview.url}?bonya_token=cap-abc"
 
@@ -125,10 +125,10 @@ def test_browser_url_refuses_a_public_preview(monkeypatch: pytest.MonkeyPatch) -
     """A public preview has no token to exchange, and attaching one anyway
     would hand the sandbox's capability to whoever the URL is shared with."""
     sandbox, _ = _sandbox(monkeypatch)
-    preview = sandbox.previews.create(8080, auth=PreviewAuth.PUBLIC)
+    preview = sandbox.create_preview(8080, auth=PreviewAuth.PUBLIC)
 
     with pytest.raises(InvalidRequestError):
-        sandbox.previews.browser_url(preview)
+        sandbox.preview_browser_url(preview)
 
 
 def test_preview_rpc_errors_are_typed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -138,7 +138,7 @@ def test_preview_rpc_errors_are_typed(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     with pytest.raises(InvalidRequestError):
-        sandbox.previews.create(3000)
+        sandbox.create_preview(3000)
 
 
 def test_preview_errors_do_not_leak_the_capability(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -151,7 +151,7 @@ def test_preview_errors_do_not_leak_the_capability(monkeypatch: pytest.MonkeyPat
     )
 
     with pytest.raises(InvalidRequestError) as raised:
-        sandbox.previews.list()
+        sandbox.list_previews()
     assert secret not in str(raised.value)
 
 

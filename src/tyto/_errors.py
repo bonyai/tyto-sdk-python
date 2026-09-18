@@ -61,6 +61,14 @@ class SessionNotFoundError(TytoError):
     pass
 
 
+class JobRunNotFoundError(TytoError):
+    pass
+
+
+class JobScheduleNotFoundError(TytoError):
+    pass
+
+
 class SandboxDeletedError(TytoError):
     pass
 

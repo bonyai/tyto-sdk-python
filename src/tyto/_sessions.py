@@ -3,30 +3,20 @@ from __future__ import annotations
 import queue
 import threading
 import time
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import Any, cast
 
-from ._errors import (
-    AuthenticationError,
-    InvalidRequestError,
-    SandboxDeletedError,
-    SandboxFailedError,
-    TimeoutError,
-)
+from ._errors import InvalidRequestError, TimeoutError
 from ._grpc_errors import map_rpc_error
 from ._session import _validate_resize_dimension
 from ._transport import Deadline
-from ._types import Exit, Status, Stdout
+from ._types import Exit, Stdout
 from ._proto.tyto.runtime.v1 import guest_pb2
 
-if TYPE_CHECKING:
-    from ._sandbox import Sandbox
-
 _guest_pb2: Any = guest_pb2
-_T = TypeVar("_T")
 
 _SESSION_NAME_PATTERN_FIRST = "abcdefghijklmnopqrstuvwxyz"
 _SESSION_NAME_PATTERN_REST = _SESSION_NAME_PATTERN_FIRST + "0123456789-"
@@ -327,165 +317,6 @@ class SessionStream:
                 return
             self._reader_started = True
             self._reader.start()
-
-
-class SandboxSessions:
-    """Managed console session RPC surface (Sprint 14): persistent,
-    guest-owned command sessions that outlive the client connection.
-
-    Capability refresh follows S14.7's contract: an ``UNAUTHENTICATED``
-    rejection (an expired token) transparently calls ``ReissueCapability``
-    and retries exactly once, at admission time only, never mid-stream.
-    ``PERMISSION_DENIED`` never triggers a refresh.
-    """
-
-    def __init__(self, sandbox: Sandbox) -> None:
-        self._sandbox = sandbox
-
-    def create(
-        self,
-        name: str,
-        command: Sequence[str],
-        *,
-        env: Mapping[str, str] | None = None,
-        cwd: str | None = None,
-        cols: int = 0,
-        rows: int = 0,
-        replace: bool = False,
-    ) -> SessionInfo:
-        """Create a named TTY session. Create over an existing record raises
-        ``SessionExistsError``; ``replace=True`` replaces a terminal record only
-        -- a running or attached session must be killed first."""
-        name = _validate_session_name(name)
-        argv = _validate_session_command(command)
-        normalized_env = _validate_session_env(env)
-        normalized_cwd = _validate_session_cwd(cwd)
-        cols = _validate_session_dimension("cols", cols)
-        rows = _validate_session_dimension("rows", rows)
-        if not isinstance(replace, bool):
-            raise InvalidRequestError("replace must be a boolean")
-
-        def call() -> SessionInfo:
-            request = _guest_pb2.CreateSessionRequest(
-                name=name,
-                command=argv,
-                env=normalized_env,
-                working_dir=normalized_cwd,
-                cols=cols,
-                rows=rows,
-                replace=replace,
-            )
-            try:
-                response = self._stub().CreateSession(request, timeout=self._timeout(), metadata=self._metadata())
-            except BaseException as exc:
-                raise self._map_error(exc) from exc
-            return _session_info_from_proto(response.session)
-
-        return self._with_capability_refresh(call)
-
-    def list(self) -> SessionList:
-        """List sessions. Works on a suspended sandbox without waking it
-        (D13/F1): the result's ``sandbox_suspended`` is True when served
-        from the suspend-time snapshot rather than the live guest."""
-
-        def call() -> SessionList:
-            request = _guest_pb2.ListSessionsRequest()
-            try:
-                response = self._stub().ListSessions(request, timeout=self._timeout(), metadata=self._metadata())
-            except BaseException as exc:
-                raise self._map_error(exc) from exc
-            return SessionList(
-                sessions=tuple(_session_info_from_proto(info) for info in response.sessions),
-                sandbox_suspended=bool(response.sandbox_suspended),
-            )
-
-        return self._with_capability_refresh(call)
-
-    def kill(self, name: str, *, signal: str = "TERM", grace_ms: int = 5000) -> SessionInfo:
-        """Signal (default TERM), then SIGKILL after grace_ms if still alive."""
-        name = _validate_session_name(name)
-        if not isinstance(signal, str) or not signal:
-            raise InvalidRequestError("signal must be a non-empty string")
-        if isinstance(grace_ms, bool) or not isinstance(grace_ms, int) or grace_ms < 0:
-            raise InvalidRequestError("grace_ms must be a non-negative integer")
-
-        def call() -> SessionInfo:
-            request = _guest_pb2.KillSessionRequest(name=name, signal=signal, grace_ms=grace_ms)
-            try:
-                response = self._stub().KillSession(request, timeout=self._timeout(), metadata=self._metadata())
-            except BaseException as exc:
-                raise self._map_error(exc) from exc
-            return _session_info_from_proto(response.session)
-
-        return self._with_capability_refresh(call)
-
-    def attach(self, name: str, *, cols: int = 0, rows: int = 0, max_replay_bytes: int = 0) -> SessionStream:
-        """Attach to a session by name, replaying bounded output produced
-        while detached. A second attach preempts an existing one -- the
-        loser's stream ends with a TAKEOVER ``SessionEnded`` event."""
-        name = _validate_session_name(name)
-        cols = _validate_session_dimension("cols", cols)
-        rows = _validate_session_dimension("rows", rows)
-        if isinstance(max_replay_bytes, bool) or not isinstance(max_replay_bytes, int) or max_replay_bytes < 0:
-            raise InvalidRequestError("max_replay_bytes must be a non-negative integer")
-        self._ensure_sessions_allowed()
-
-        def open_stream() -> SessionStream:
-            sandbox = self._sandbox
-            return SessionStream(
-                sandbox_id=sandbox.id,
-                name=name,
-                cols=cols,
-                rows=rows,
-                max_replay_bytes=max_replay_bytes,
-                stub=sandbox._client._exec_stub(sandbox._exec_endpoint),
-                capability=sandbox._capability,
-                timeout=sandbox._client._timeout,
-                secrets=sandbox._client._secrets(sandbox._capability),
-            )
-
-        try:
-            return open_stream()
-        except AuthenticationError:
-            self._sandbox.reissue_capability()
-            return open_stream()
-
-    def _with_capability_refresh(self, call: Callable[[], _T]) -> _T:
-        self._ensure_sessions_allowed()
-        try:
-            return call()
-        except AuthenticationError:
-            self._sandbox.reissue_capability()
-            return call()
-
-    def _ensure_sessions_allowed(self) -> None:
-        sandbox = self._sandbox
-        if sandbox._deleted or sandbox.last_observed_status is Status.DELETED:
-            raise SandboxDeletedError("sandbox has been deleted", sandbox_id=sandbox.id, operation_id=sandbox.operation_id)
-        if sandbox.last_observed_status is Status.FAILED:
-            message = sandbox._failure_message or sandbox._failure_code or "sandbox failed"
-            raise SandboxFailedError(message, sandbox_id=sandbox.id, operation_id=sandbox.operation_id)
-
-    def _stub(self) -> Any:
-        return self._sandbox._client._exec_stub(self._sandbox._exec_endpoint)
-
-    def _timeout(self) -> float:
-        return Deadline.start(self._sandbox._client._timeout).remaining()
-
-    def _metadata(self) -> tuple[tuple[str, str], tuple[str, str]]:
-        return (
-            ("bonya-sandbox-id", self._sandbox.id),
-            ("bonya-exec-capability", self._sandbox._capability),
-        )
-
-    def _map_error(self, error: BaseException) -> BaseException:
-        return map_rpc_error(
-            error,
-            secrets=self._sandbox._client._secrets(self._sandbox._capability),
-            sandbox_id=self._sandbox.id,
-            operation_id=self._sandbox.operation_id,
-            session_rpc=True,
-        )
 
 
 def _validate_session_name(name: object) -> str:

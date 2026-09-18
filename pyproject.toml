@@ -29,6 +29,7 @@ dev = [
   "build>=1.0",
   "mypy>=1.8",
   "pytest>=8",
+  "twine>=6.2",
 ]
 
 [tool.setuptools.packages.find]

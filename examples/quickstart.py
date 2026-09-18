@@ -23,7 +23,7 @@ def main() -> None:
     ) as client:
         # `with` on the sandbox deletes it on the way out, including if the
         # body raises. Drop it for a sandbox meant to outlive the script.
-        with client.create_sandbox(template="ubuntu-24.04") as sandbox:
+        with client.create_sandbox(template="bonya-dev") as sandbox:
             print(f"created {sandbox.name} ({sandbox.id})")
 
             result = sandbox.exec(["echo", "hello from tyto"], check=True)
